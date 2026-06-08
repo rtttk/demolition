@@ -1,0 +1,117 @@
+/* ==========================================
+   拆除服务平台 - 极简主义设计系统 (Minimalist Design System)
+   基于极简设计原则：清晰的层次、充足的留白、克制的色彩
+   ========================================== */
+
+// ==================== 主题色 ====================
+$primary-color: #FF6B35;           // 品牌橙 - 主要 CTA 和强调
+$primary-light: #FFF5F0;           // 品牌橙浅 - 背景和hover
+$primary-dark: #E55A25;            // 品牌橙深 - 按下状态
+
+// ==================== 功能色 ====================
+$success-color: #10B981;           // 成功绿
+$warning-color: #F59E0B;           // 警告黄
+$error-color: #EF4444;            // 错误红
+$info-color: #3B82F6;             // 信息蓝
+
+// ==================== 中性色 - 极简灰阶 ====================
+$gray-50: #FAFAFA;
+$gray-100: #F5F5F5;
+$gray-200: #EEEEEE;
+$gray-300: #E0E0E0;
+$gray-400: #BDBDBD;
+$gray-500: #9E9E9E;
+$gray-600: #757575;
+$gray-700: #616161;
+$gray-800: #424242;
+$gray-900: #212121;
+
+// ==================== 文字色 ====================
+$text-title: $gray-900;           // 标题
+$text-main: $gray-800;           // 正文
+$text-secondary: $gray-600;      // 次要文字
+$text-placeholder: $gray-400;    // 占位符
+$text-disabled: $gray-300;       // 禁用文字
+
+// ==================== 边框色 ====================
+$border-color: $gray-200;         // 默认边框
+$border-color-light: $gray-100;   // 浅边框
+
+// ==================== 背景色 ====================
+$bg-page: $gray-50;              // 页面背景
+$bg-card: #FFFFFF;               // 卡片背景
+$bg-gray: $gray-100;             // 灰底背景
+$bg-hover: $gray-50;             // 悬停背景
+
+// ==================== 圆角 - 极简适度圆角 ====================
+$radius-sm: 6rpx;
+$radius-md: 10rpx;
+$radius-lg: 14rpx;
+$radius-xl: 20rpx;
+$radius-full: 9999rpx;
+$radius-round: $radius-full;  // 兼容旧代码别名
+
+// ==================== 间距 - 基于 8rpx 网格 ====================
+$spacing-1: 4rpx;
+$spacing-2: 8rpx;
+$spacing-3: 12rpx;
+$spacing-4: 16rpx;
+$spacing-5: 20rpx;
+$spacing-6: 24rpx;
+$spacing-8: 32rpx;
+$spacing-10: 40rpx;
+$spacing-12: 48rpx;
+
+// ==================== 间距兼容别名 ====================
+// 兼容旧代码中的命名
+$spacing-xs: $spacing-2;   // 8rpx
+$spacing-sm: $spacing-4;   // 16rpx
+$spacing-md: $spacing-6;   // 24rpx
+$spacing-lg: $spacing-8;   // 32rpx
+$spacing-xl: $spacing-10;  // 40rpx
+
+// ==================== 字号 - 清晰的层级 ====================
+$font-size-xs: 20rpx;
+$font-size-sm: 22rpx;
+$font-size-base: 26rpx;
+$font-size-md: 28rpx;
+$font-size-lg: 30rpx;
+$font-size-xl: 34rpx;
+$font-size-xxl: 38rpx;
+$font-size-title: 44rpx;
+
+// ==================== 字重 ====================
+$font-weight-regular: 400;
+$font-weight-medium: 500;
+$font-weight-semibold: 600;
+$font-weight-bold: 700;
+
+// ==================== 行高 ====================
+$line-height-tight: 1.2;
+$line-height-normal: 1.5;
+$line-height-relaxed: 1.75;
+
+// ==================== 阴影 - 极简轻阴影 ====================
+$shadow-sm: 0 1rpx 2rpx rgba(0, 0, 0, 0.04);
+$shadow-md: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+$shadow-lg: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
+
+// ==================== 动画 ====================
+$transition-fast: 0.15s ease;
+$transition-normal: 0.2s ease;
+$transition-slow: 0.3s ease;
+
+// ==================== 层级 ====================
+$z-index-dropdown: 100;
+$z-index-sticky: 200;
+$z-index-fixed: 300;
+$z-index-modal: 400;
+$z-index-toast: 500;
+
+// ==================== 极简设计规范 ====================
+// 1. 图标：使用 SVG 图标，禁止使用 Emoji
+// 2. 色彩：克制使用，必要时使用灰色过渡
+// 3. 间距：充足留白，内容区域 padding 最小 32rpx
+// 4. 阴影：轻量级阴影，仅在卡片和浮层使用
+// 5. 圆角：适度圆角，避免过度圆润
+// 6. 字体：清晰层级，避免花哨字体

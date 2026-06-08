@@ -1,0 +1,120 @@
+/* ===== Basic Reset ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+  font-size: 14px;
+  color: #303133;
+  background-color: #f0f2f5;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* ===== Layout Styles ===== */
+.page-container {
+  width: 100%;
+}
+
+.search-card {
+  margin-bottom: 16px;
+
+  :deep(.el-card__body) {
+    padding: 18px 20px 2px;
+  }
+}
+
+.table-card {
+  :deep(.el-card__body) {
+    padding: 16px;
+  }
+}
+
+/* ===== Pagination ===== */
+.pagination {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ===== Table Compact Styles ===== */
+.el-table {
+  .el-table__cell {
+    padding: 8px 0;
+  }
+
+  .cell {
+    font-size: 13px;
+  }
+}
+
+.el-table--small .el-table__cell {
+  padding: 4px 0;
+}
+
+/* ===== Status Tag Overrides ===== */
+.el-tag {
+  font-weight: 500;
+}
+
+/* ===== Element Plus Overrides ===== */
+.el-card {
+  border-radius: 4px;
+}
+
+.el-dialog {
+  border-radius: 8px;
+}
+
+.el-drawer {
+  .el-drawer__header {
+    margin-bottom: 16px;
+    padding: 16px 20px;
+    border-bottom: 1px solid #ebeef5;
+  }
+
+  .el-drawer__body {
+    padding: 20px;
+  }
+}
+
+/* ===== Scrollbar ===== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #dcdfe6;
+  border-radius: 3px;
+
+  &:hover {
+    background: #c0c4cc;
+  }
+}
+
+/* ===== Transition ===== */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}

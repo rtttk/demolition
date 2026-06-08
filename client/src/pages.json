@@ -1,0 +1,224 @@
+{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "首页"
+      }
+    },
+    {
+      "path": "pages/order/index",
+      "style": {
+        "navigationBarTitleText": "我的订单"
+      }
+    },
+    {
+      "path": "pages/message/index",
+      "style": {
+        "navigationBarTitleText": "消息"
+      }
+    },
+    {
+      "path": "pages/my/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "我的"
+      }
+    },
+    {
+      "path": "pages/login/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "登录"
+      }
+    },
+    {
+      "path": "pages/role-select/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "选择角色"
+      }
+    },
+    {
+      "path": "pages/search/index",
+      "style": {
+        "navigationBarTitleText": "搜索"
+      }
+    },
+    {
+      "path": "pages/demand/publish",
+      "style": {
+        "navigationBarTitleText": "发布需求"
+      }
+    },
+    {
+      "path": "pages/demand/my-list",
+      "style": {
+        "navigationBarTitleText": "我的需求"
+      }
+    },
+    {
+      "path": "pages/demand/detail",
+      "style": {
+        "navigationBarTitleText": "需求详情"
+      }
+    },
+    {
+      "path": "pages/order/detail",
+      "style": {
+        "navigationBarTitleText": "订单详情"
+      }
+    },
+    {
+      "path": "pages/order/logs",
+      "style": {
+        "navigationBarTitleText": "施工日志"
+      }
+    },
+    {
+      "path": "pages/order/review",
+      "style": {
+        "navigationBarTitleText": "评价"
+      }
+    },
+    {
+      "path": "pages/team/home",
+      "style": {
+        "navigationBarTitleText": "团队主页"
+      }
+    },
+    {
+      "path": "pages/case/list",
+      "style": {
+        "navigationBarTitleText": "案例展示"
+      }
+    },
+    {
+      "path": "pages/case/detail",
+      "style": {
+        "navigationBarTitleText": "案例详情"
+      }
+    },
+    {
+      "path": "pages/compliance/list",
+      "style": {
+        "navigationBarTitleText": "合规知识"
+      }
+    },
+    {
+      "path": "pages/message/detail",
+      "style": {
+        "navigationBarTitleText": "消息详情"
+      }
+    },
+    {
+      "path": "provider/hall/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "订单大厅"
+      }
+    },
+    {
+      "path": "provider/quote/my-quotes",
+      "style": {
+        "navigationBarTitleText": "我的报价"
+      }
+    },
+    {
+      "path": "provider/quote/submit",
+      "style": {
+        "navigationBarTitleText": "提交报价"
+      }
+    },
+    {
+      "path": "provider/order/my-orders",
+      "style": {
+        "navigationBarTitleText": "我的订单"
+      }
+    },
+    {
+      "path": "provider/order/detail",
+      "style": {
+        "navigationBarTitleText": "订单详情"
+      }
+    },
+    {
+      "path": "provider/log/upload",
+      "style": {
+        "navigationBarTitleText": "上传施工日志"
+      }
+    },
+    {
+      "path": "provider/company/manage",
+      "style": {
+        "navigationBarTitleText": "企业管理"
+      }
+    },
+    {
+      "path": "provider/team/manage",
+      "style": {
+        "navigationBarTitleText": "团队管理"
+      }
+    },
+    {
+      "path": "provider/case/upload",
+      "style": {
+        "navigationBarTitleText": "上传案例"
+      }
+    },
+    {
+      "path": "provider/profile/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "我的"
+      }
+    },
+    {
+      "path": "provider/employee/info",
+      "style": {
+        "navigationBarTitleText": "员工信息"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "拆除服务平台",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "backgroundColor": "#FAFAFA",
+    "backgroundColorTop": "#FAFAFA",
+    "backgroundColorBottom": "#FAFAFA"
+  },
+  "tabBar": {
+    "color": "#9E9E9E",
+    "selectedColor": "#FF6B35",
+    "borderStyle": "black",
+    "backgroundColor": "#FFFFFF",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "iconPath": "static/tabbar/home.png",
+        "selectedIconPath": "static/tabbar/home-active.png",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/order/index",
+        "iconPath": "static/tabbar/order.png",
+        "selectedIconPath": "static/tabbar/order-active.png",
+        "text": "订单"
+      },
+      {
+        "pagePath": "pages/message/index",
+        "iconPath": "static/tabbar/msg.png",
+        "selectedIconPath": "static/tabbar/msg-active.png",
+        "text": "消息"
+      },
+      {
+        "pagePath": "pages/my/index",
+        "iconPath": "static/tabbar/my.png",
+        "selectedIconPath": "static/tabbar/my-active.png",
+        "text": "我的"
+      }
+    ]
+  }
+}
