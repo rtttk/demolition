@@ -12,143 +12,130 @@ export class AdminService {
 
   // ==================== 用户管理 ====================
 
-  async getUserList(pagination: PaginationDto; filters?: any) {
+  async getUserList(pagination: PaginationDto, filters?: any) {
     const where: any = {};
 
-    // 按角色筛选（兼容旧字段）
     if (filters?.role !== undefined) {
       where.role = Number(filters.role);
     }
-
-    // 按状态筛选
     if (filters?.status !== undefined) {
       where.status = Number(filters.status);
     }
     if (filters?.phone) {
-      where.phone = { contains: filters.phone }
+      where.phone = { contains: filters.phone };
     }
 
     const [list, total] = await Promise.all([
       this.prisma.user.findMany({
         where,
-        skip: pagination.skip;
-        take: pagination.take;
+        skip: pagination.skip,
+        take: pagination.take,
         orderBy: { createdAt: 'desc' },
         select: {
-          id: true;
-          phone: true;
-          nickname: true;
-          avatarUrl: true;
-          roles: true;
-          currentRole: true;
-          realName: true;
-          gender: true;
-          teamId: true;
-          isTeamAdmin: true;
-          status: true;
-          lastLoginAt: true;
-          createdAt: true;
-          team: {
-            select: { id: true; name: true },
-          },
+          id: true,
+          phone: true,
+          nickname: true,
+          avatarUrl: true,
+          roles: true,
+          currentRole: true,
+          realName: true,
+          gender: true,
+          teamId: true,
+          isTeamAdmin: true,
+          status: true,
+          lastLoginAt: true,
+          createdAt: true,
         },
       }),
       this.prisma.user.count({ where }),
     ]);
 
-    // 转换 roles 为数组
     const transformedList = list.map(item => ({
       ...item,
       roles: this.parseRoles(item.roles),
     }));
 
-    return {list: transformedList.map(item => item),
+    return {
+      list: transformedList,
       total,
-      page: pagination.page;
-      pageSize: pagination.pageSize;
+      page: pagination.page,
+      pageSize: pagination.pageSize,
     };
   }
 
-  async updateUserStatus(userId: number; targetId: number; status: number) {
+  async updateUserStatus(userId: string, targetId: string, status: number) {
     const user = await this.prisma.user.findUnique({
-      where: { id: String(targetId) },
-});
+      where: { id: targetId },
+    });
     if (!user) {
       throw new NotFoundException('用户不存在');
     }
 
     const updated = await this.prisma.user.update({
-      where: { id: String(targetId) },
+      where: { id: targetId },
       data: { status },
       select: {
-        id: true;
-        nickname: true;
-        phone: true;
-        status: true;
-        updatedAt: true;
+        id: true,
+        nickname: true,
+        phone: true,
+        status: true,
+        updatedAt: true,
       },
-	});
+    });
 
     await this.eventLog.log({
-      bizType: 'user';
-      bizId: targetId;
-      eventType: 'admin_update_status';
-      operatorId: userId;
-      detail: { targetId, oldStatus: user.status; newStatus: status },
-});
+      bizType: 'user',
+      bizId: targetId,
+      eventType: 'admin_update_status',
+      operatorId: userId,
+      detail: { targetId, oldStatus: user.status, newStatus: status },
+    });
 
     return updated;
   }
 
-  /**
-   * 分配用户角色
-   */
-  async assignUserRoles(userId: number; targetId: number; roles: number[]) {
+  async assignUserRoles(userId: string, targetId: string, roles: number[]) {
     const user = await this.prisma.user.findUnique({
-      where: { id: String(targetId) },
-});
+      where: { id: targetId },
+    });
     if (!user) {
       throw new NotFoundException('用户不存在');
     }
 
-    // 校验角色值
     const validRoles = roles.filter(r => [1, 2, 3].includes(r));
     if (validRoles.length === 0) {
       throw new BadRequestException('无效的角色');
     }
 
-    // 确保需求方角色始终存在（所有用户默认都是需求方）
     if (!validRoles.includes(1)) {
       validRoles.push(1);
     }
 
     const updated = await this.prisma.user.update({
-      where: { id: String(targetId) },
+      where: { id: targetId },
       data: { roles: JSON.stringify(validRoles) },
       select: {
-        id: true;
-        roles: true;
-        currentRole: true;
+        id: true,
+        roles: true,
+        currentRole: true,
       },
-	});
+    });
 
     await this.eventLog.log({
-      bizType: 'user';
-      bizId: targetId;
-      eventType: 'admin_assign_roles';
-      operatorId: userId;
-      detail: { targetId, oldRoles: user.roles; newRoles: validRoles },
-});
+      bizType: 'user',
+      bizId: targetId,
+      eventType: 'admin_assign_roles',
+      operatorId: userId,
+      detail: { targetId, oldRoles: user.roles, newRoles: validRoles },
+    });
 
-    return {id: Number(updated.id),
+    return {
+      id: updated.id,
       roles: this.parseRoles(updated.roles),
-      currentRole: updated.currentRole;
+      currentRole: updated.currentRole,
     };
   }
 
-  /**
-   * 解析用户角色数组
-   */
   private parseRoles(roles: any): number[] {
     if (!roles) return [1];
     if (typeof roles === 'string') {
@@ -164,11 +151,11 @@ export class AdminService {
 
   // ==================== 公司管理 ====================
 
-  async getCompanyList(pagination: PaginationDto; filters?: any) {
+  async getCompanyList(pagination: PaginationDto, filters?: any) {
     const where: any = {};
 
     if (filters?.name) {
-      where.name = { contains: filters.name }
+      where.name = { contains: filters.name };
     }
     if (filters?.verifyStatus !== undefined) {
       where.verifyStatus = Number(filters.verifyStatus);
@@ -180,40 +167,39 @@ export class AdminService {
     const [list, total] = await Promise.all([
       this.prisma.company.findMany({
         where,
-        skip: pagination.skip;
-        take: pagination.take;
+        skip: pagination.skip,
+        take: pagination.take,
         orderBy: { createdAt: 'desc' },
         include: {
           admins: {
-            take: 1;
             include: {
               user: {
-                select: { id: true; nickname: true; phone: true },
+                select: { id: true, nickname: true, phone: true },
               },
             },
           },
-          _count: { select: { teams: true; cases: true } },
+          _count: { select: { teams: true, cases: true } },
         },
-      }),
+      } as any),
       this.prisma.company.count({ where }),
     ]);
 
-    return {list: list.map((item) => this.transformCompany(item)),
+    return {
+      list: list.map((item) => this.transformCompany(item)),
       total,
-      page: pagination.page;
-      pageSize: pagination.pageSize;
+      page: pagination.page,
+      pageSize: pagination.pageSize,
     };
   }
 
   async verifyCompany(
-    operatorId: number;
-    companyId: number;
-    action: 'passed' | 'rejected';
+    companyId: string,
+    action: 'passed' | 'rejected',
     remark?: string,
   ) {
     const company = await this.prisma.company.findUnique({
-      where: { id: String(companyId) },
-});
+      where: { id: companyId },
+    });
     if (!company) {
       throw new NotFoundException('公司不存在');
     }
@@ -221,64 +207,62 @@ export class AdminService {
     const verifyStatus = action === 'passed' ? 1 : 2;
 
     const updated = await this.prisma.company.update({
-      where: { id: String(companyId) },
+      where: { id: companyId },
       data: {
         verifyStatus,
-        verifyRemark: remark || null;
+        verifyRemark: remark || null,
       },
-	});
+    });
 
     await this.eventLog.log({
-      bizType: 'company';
-      bizId: companyId;
-      eventType: 'admin_verify';
-      operatorId,
+      bizType: 'company',
+      bizId: companyId,
+      eventType: 'admin_verify',
       detail: { action, remark },
-});
+    });
 
     return this.transformCompany(updated);
   }
 
-  async getCompanyTeams(companyId: number; pagination: PaginationDto) {
+  async getCompanyTeams(companyId: string, pagination: PaginationDto) {
     const company = await this.prisma.company.findUnique({
-      where: { id: String(companyId) },
-});
+      where: { id: companyId },
+    });
     if (!company) {
       throw new NotFoundException('公司不存在');
     }
 
     const [list, total] = await Promise.all([
       this.prisma.team.findMany({
-        where: { companyId: String(companyId) },
-        skip: pagination.skip;
-        take: pagination.take;
+        where: { companyId },
+        skip: pagination.skip,
+        take: pagination.take,
         orderBy: { createdAt: 'desc' },
         include: {
-          _count: { select: { members: true; quotes: true; orders: true; cases: true } },
+          _count: { select: { members: true, quotes: true, orders: true, cases: true } },
         },
-      }),
-      this.prisma.team.count({
-        where: { companyId: String(companyId) },
-      }),
+      } as any),
+      this.prisma.team.count({ where: { companyId } }),
     ]);
 
-    return {list: list.map((item) => this.transformTeam(item)),
+    return {
+      list: list.map((item) => this.transformTeam(item)),
       total,
-      page: pagination.page;
-      pageSize: pagination.pageSize;
+      page: pagination.page,
+      pageSize: pagination.pageSize,
     };
   }
 
   // ==================== 团队管理 ====================
 
-  async getTeamList(pagination: PaginationDto; filters?: any) {
+  async getTeamList(pagination: PaginationDto, filters?: any) {
     const where: any = {};
 
     if (filters?.companyId !== undefined) {
       where.companyId = String(filters.companyId);
     }
     if (filters?.name) {
-      where.name = { contains: filters.name }
+      where.name = { contains: filters.name };
     }
     if (filters?.status !== undefined) {
       where.status = Number(filters.status);
@@ -287,63 +271,64 @@ export class AdminService {
     const [list, total] = await Promise.all([
       this.prisma.team.findMany({
         where,
-        skip: pagination.skip;
-        take: pagination.take;
+        skip: pagination.skip,
+        take: pagination.take,
         orderBy: { createdAt: 'desc' },
         include: {
           company: {
-            select: { id: true; name: true },
+            select: { id: true, name: true },
           },
-          _count: { select: { members: true; quotes: true; orders: true; cases: true } },
+          _count: { select: { members: true, quotes: true, orders: true, cases: true } },
         },
-      }),
+      } as any),
       this.prisma.team.count({ where }),
     ]);
 
-    return {list: list.map((item) => this.transformTeam(item)),
+    return {
+      list: list.map((item) => this.transformTeam(item)),
       total,
-      page: pagination.page;
-      pageSize: pagination.pageSize;
+      page: pagination.page,
+      pageSize: pagination.pageSize,
     };
   }
 
-  async updateTeamStatus(operatorId: number; teamId: number; status: number) {
+  async updateTeamStatus(userId: string, teamId: string, status: number) {
     const team = await this.prisma.team.findUnique({
-      where: { id: String(teamId) },
-});
+      where: { id: teamId },
+    });
     if (!team) {
       throw new NotFoundException('团队不存在');
     }
 
     const updated = await this.prisma.team.update({
-      where: { id: String(teamId) },
+      where: { id: teamId },
       data: { status },
       include: {
-        company: { select: { id: true; name: true } },
+        company: { select: { id: true, name: true } },
       },
-	});
+    } as any);
 
     await this.eventLog.log({
-      bizType: 'team';
-      bizId: teamId;
-      eventType: 'admin_update_status';
-      operatorId,
-      detail: { teamId, oldStatus: team.status; newStatus: status },
-});
+      bizType: 'team',
+      bizId: teamId,
+      eventType: 'admin_update_status',
+      operatorId: userId,
+      detail: { teamId, oldStatus: team.status, newStatus: status },
+    });
 
     return this.transformTeam(updated);
   }
 
   // ==================== 需求管理 ====================
 
-  async getDemandList(pagination: PaginationDto; filters?: any) {
+  async getDemandList(pagination: PaginationDto, filters?: any) {
     const where: any = {};
 
     if (filters?.status !== undefined) {
       where.status = Number(filters.status);
     }
     if (filters?.district) {
-      where.district = { contains: filters.district }
+      where.district = { contains: filters.district };
     }
     if (filters?.demoType !== undefined) {
       where.demoType = Number(filters.demoType);
@@ -352,58 +337,59 @@ export class AdminService {
     const [list, total] = await Promise.all([
       this.prisma.demand.findMany({
         where,
-        skip: pagination.skip;
-        take: pagination.take;
+        skip: pagination.skip,
+        take: pagination.take,
         orderBy: { createdAt: 'desc' },
         include: {
           user: {
-            select: { id: true; nickname: true; phone: true },
+            select: { id: true, nickname: true, phone: true },
           },
           _count: { select: { quotes: true } },
         },
-      }),
+      } as any),
       this.prisma.demand.count({ where }),
     ]);
 
-    return {list: list.map((item) => this.transformDemand(item)),
+    return {
+      list: list.map((item) => this.transformDemand(item)),
       total,
-      page: pagination.page;
-      pageSize: pagination.pageSize;
+      page: pagination.page,
+      pageSize: pagination.pageSize,
     };
   }
 
-  async updateDemandStatus(operatorId: number; demandId: number; status: number) {
+  async updateDemandStatus(userId: string, demandId: string, status: number) {
     const demand = await this.prisma.demand.findUnique({
-      where: { id: String(demandId) },
-});
+      where: { id: demandId },
+    });
     if (!demand) {
       throw new NotFoundException('需求不存在');
     }
 
     const updated = await this.prisma.demand.update({
-      where: { id: String(demandId) },
+      where: { id: demandId },
       data: { status },
       include: {
         user: {
-          select: { id: true; nickname: true; phone: true },
+          select: { id: true, nickname: true, phone: true },
         },
       },
-	});
+    } as any);
 
     await this.eventLog.log({
-      bizType: 'demand';
-      bizId: demandId;
-      eventType: 'admin_update_status';
-      operatorId,
-      detail: { demandId, oldStatus: demand.status; newStatus: status },
-});
+      bizType: 'demand',
+      bizId: demandId,
+      eventType: 'admin_update_status',
+      operatorId: userId,
+      detail: { demandId, oldStatus: demand.status, newStatus: status },
+    });
 
     return this.transformDemand(updated);
   }
 
   // ==================== 报价管理 ====================
 
-  async getQuoteList(pagination: PaginationDto; filters?: any) {
+  async getQuoteList(pagination: PaginationDto, filters?: any) {
     const where: any = {};
 
     if (filters?.status !== undefined) {
@@ -419,40 +405,41 @@ export class AdminService {
     const [list, total] = await Promise.all([
       this.prisma.quote.findMany({
         where,
-        skip: pagination.skip;
-        take: pagination.take;
+        skip: pagination.skip,
+        take: pagination.take,
         orderBy: { createdAt: 'desc' },
         include: {
           demand: {
-            select: { id: true; demandNo: true; title: true },
+            select: { id: true, demandNo: true, title: true },
           },
           team: {
-            select: { id: true; name: true },
+            select: { id: true, name: true },
           },
           company: {
-            select: { id: true; name: true },
+            select: { id: true, name: true },
           },
         },
-      }),
+      } as any),
       this.prisma.quote.count({ where }),
     ]);
 
-    return {list: list.map((item) => this.transformQuote(item)),
+    return {
+      list: list.map((item) => this.transformQuote(item)),
       total,
-      page: pagination.page;
-      pageSize: pagination.pageSize;
+      page: pagination.page,
+      pageSize: pagination.pageSize,
     };
   }
 
   async reviewQuote(
-    operatorId: number;
-    quoteId: number;
-    action: 'passed' | 'rejected';
+    quoteId: string,
+    action: 'passed' | 'rejected',
     remark?: string,
+    reviewerId?: string,
   ) {
     const quote = await this.prisma.quote.findUnique({
-      where: { id: String(quoteId) },
-});
+      where: { id: quoteId },
+    });
     if (!quote) {
       throw new NotFoundException('报价不存在');
     }
@@ -460,40 +447,40 @@ export class AdminService {
     const status = action === 'passed' ? 1 : 2;
 
     const updated = await this.prisma.quote.update({
-      where: { id: String(quoteId) },
+      where: { id: quoteId },
       data: {
         status,
-        reviewRemark: remark || null;
+        reviewRemark: remark || null,
         reviewedAt: new Date(),
-        reviewedBy: String(operatorId),
+        reviewedBy: reviewerId || null,
       },
       include: {
         demand: {
-          select: { id: true; demandNo: true; title: true },
+          select: { id: true, demandNo: true, title: true },
         },
         team: {
-          select: { id: true; name: true },
+          select: { id: true, name: true },
         },
         company: {
-          select: { id: true; name: true },
+          select: { id: true, name: true },
         },
       },
-	});
+    } as any);
 
     await this.eventLog.log({
-      bizType: 'quote';
-      bizId: quoteId;
-      eventType: 'admin_review';
-      operatorId,
+      bizType: 'quote',
+      bizId: quoteId,
+      eventType: 'admin_review',
+      operatorId: reviewerId,
       detail: { action, remark },
-});
+    });
 
     return this.transformQuote(updated);
   }
 
   // ==================== 订单管理 ====================
 
-  async getOrderList(pagination: PaginationDto; filters?: any) {
+  async getOrderList(pagination: PaginationDto, filters?: any) {
     const where: any = {};
 
     if (filters?.status !== undefined) {
@@ -509,37 +496,38 @@ export class AdminService {
     const [list, total] = await Promise.all([
       this.prisma.order.findMany({
         where,
-        skip: pagination.skip;
-        take: pagination.take;
+        skip: pagination.skip,
+        take: pagination.take,
         orderBy: { createdAt: 'desc' },
         include: {
           demand: {
-            select: { id: true; demandNo: true; title: true; demoType: true },
+            select: { id: true, demandNo: true, title: true, demoType: true },
           },
           user: {
-            select: { id: true; nickname: true; phone: true },
+            select: { id: true, nickname: true, phone: true },
           },
           team: {
-            select: { id: true; name: true },
+            select: { id: true, name: true },
           },
           company: {
-            select: { id: true; name: true },
+            select: { id: true, name: true },
           },
         },
-      }),
+      } as any),
       this.prisma.order.count({ where }),
     ]);
 
-    return {list: list.map((item) => this.transformOrder(item)),
+    return {
+      list: list.map((item) => this.transformOrder(item)),
       total,
-      page: pagination.page;
-      pageSize: pagination.pageSize;
+      page: pagination.page,
+      pageSize: pagination.pageSize,
     };
   }
 
   // ==================== 施工日志监控 ====================
 
-  async getLogList(pagination: PaginationDto; filters?: any) {
+  async getLogList(pagination: PaginationDto, filters?: any) {
     const where: any = {};
 
     if (filters?.orderId !== undefined) {
@@ -552,31 +540,32 @@ export class AdminService {
     const [list, total] = await Promise.all([
       this.prisma.constructionLog.findMany({
         where,
-        skip: pagination.skip;
-        take: pagination.take;
+        skip: pagination.skip,
+        take: pagination.take,
         orderBy: { logDate: 'desc' },
         include: {
           order: {
-            select: { id: true; orderNo: true },
+            select: { id: true, orderNo: true },
           },
           team: {
-            select: { id: true; name: true },
+            select: { id: true, name: true },
           },
         },
-      }),
+      } as any),
       this.prisma.constructionLog.count({ where }),
     ]);
 
-    return {list: list.map((item) => this.transformConstructionLog(item)),
+    return {
+      list: list.map((item) => this.transformConstructionLog(item)),
       total,
-      page: pagination.page;
-      pageSize: pagination.pageSize;
+      page: pagination.page,
+      pageSize: pagination.pageSize,
     };
   }
 
   // ==================== 案例管理 ====================
 
-  async getCaseList(pagination: PaginationDto; filters?: any) {
+  async getCaseList(pagination: PaginationDto, filters?: any) {
     const where: any = {};
 
     if (filters?.status !== undefined) {
@@ -592,36 +581,37 @@ export class AdminService {
     const [list, total] = await Promise.all([
       this.prisma.case.findMany({
         where,
-        skip: pagination.skip;
-        take: pagination.take;
+        skip: pagination.skip,
+        take: pagination.take,
         orderBy: { createdAt: 'desc' },
         include: {
           team: {
-            select: { id: true; name: true },
+            select: { id: true, name: true },
           },
           company: {
-            select: { id: true; name: true },
+            select: { id: true, name: true },
           },
         },
-      }),
+      } as any),
       this.prisma.case.count({ where }),
     ]);
 
-    return {list: list.map((item) => this.transformCase(item)),
+    return {
+      list: list.map((item) => this.transformCase(item)),
       total,
-      page: pagination.page;
-      pageSize: pagination.pageSize;
+      page: pagination.page,
+      pageSize: pagination.pageSize,
     };
   }
 
   async updateCaseStatus(
-    operatorId: number;
-    caseId: number;
-    action: 'passed' | 'rejected';
+    userId: string,
+    caseId: string,
+    action: 'passed' | 'rejected',
   ) {
     const caseItem = await this.prisma.case.findUnique({
-      where: { id: String(caseId) },
-});
+      where: { id: caseId },
+    });
     if (!caseItem) {
       throw new NotFoundException('案例不存在');
     }
@@ -629,50 +619,50 @@ export class AdminService {
     const status = action === 'passed' ? 1 : 2;
 
     const updated = await this.prisma.case.update({
-      where: { id: String(caseId) },
+      where: { id: caseId },
       data: { status },
       include: {
         team: {
-          select: { id: true; name: true },
+          select: { id: true, name: true },
         },
         company: {
-          select: { id: true; name: true },
+          select: { id: true, name: true },
         },
       },
-	});
+    } as any);
 
     await this.eventLog.log({
-      bizType: 'case';
-      bizId: caseId;
-      eventType: 'admin_review';
-      operatorId,
+      bizType: 'case',
+      bizId: caseId,
+      eventType: 'admin_review',
+      operatorId: userId,
       detail: { action },
-});
+    });
 
     return this.transformCase(updated);
   }
 
   // ==================== 合规模板管理 ====================
 
-  async getComplianceList(pagination: PaginationDto; filters?: any) {
+  async getComplianceList(pagination: PaginationDto, filters?: any) {
     const where: any = {};
 
     if (filters?.category) {
       where.category = filters.category;
     }
-    // 合规模板管理接口包含下架状态，不限制 status
 
     const [list, total] = await Promise.all([
       this.prisma.complianceDoc.findMany({
         where,
-        skip: pagination.skip;
-        take: pagination.take;
+        skip: pagination.skip,
+        take: pagination.take,
         orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
       }),
       this.prisma.complianceDoc.count({ where }),
     ]);
 
-    return {list: list.map((item) => item),
+    return {
+      list: list.map((item) => item),
       total,
       page: pagination.page,
       pageSize: pagination.pageSize,
@@ -680,12 +670,12 @@ export class AdminService {
   }
 
   async createCompliance(data: {
-    title: string;,
-    category: string;,
-    description?: string;
-    fileId?: number;
-    fileUrl?: string;
-    sortOrder?: number;
+    title: string,
+    category: string,
+    description?: string,
+    fileId?: number,
+    fileUrl?: string,
+    sortOrder?: number,
   }) {
     const doc = await this.prisma.complianceDoc.create({
       data: {
@@ -696,26 +686,26 @@ export class AdminService {
         fileUrl: data.fileUrl,
         sortOrder: data.sortOrder ?? 0,
       },
-	});
+    });
 
     return doc;
   }
 
   async updateCompliance(
-    id: number;
+    id: string,
     data: {
-      title?: string;
-      category?: string;
-      description?: string;
-      fileId?: number;
-      fileUrl?: string;
-      sortOrder?: number;
-      status?: number;
+      title?: string,
+      category?: string,
+      description?: string,
+      fileId?: number,
+      fileUrl?: string,
+      sortOrder?: number,
+      status?: number,
     },
   ) {
     const doc = await this.prisma.complianceDoc.findUnique({
-      where: { id: String(id) },
-});
+      where: { id },
+    });
     if (!doc) {
       throw new NotFoundException('合规模板不存在');
     }
@@ -730,26 +720,26 @@ export class AdminService {
     if (data.status !== undefined) updateData.status = data.status;
 
     const updated = await this.prisma.complianceDoc.update({
-      where: { id: String(id) },
-      data: updateData;
-    };
+      where: { id },
+      data: updateData,
+    });
 
     return updated;
   }
 
-  async deleteCompliance(id: number) {
+  async deleteCompliance(id: string) {
     const doc = await this.prisma.complianceDoc.findUnique({
-      where: { id: String(id) },
-});
+      where: { id },
+    });
     if (!doc) {
       throw new NotFoundException('合规模板不存在');
     }
 
     await this.prisma.complianceDoc.delete({
-      where: { id: String(id) },
-});
+      where: { id },
+    });
 
-    return {success: true };
+    return { success: true };
   }
 
   // ==================== 数据看板 ====================
@@ -771,42 +761,33 @@ export class AdminService {
       pendingReviewQuotes,
       pendingReviewCases,
     ] = await Promise.all([
-      // 今日新增用户
       this.prisma.user.count({
-        where: { createdAt: { gte: todayStart; lte: todayEnd } },
+        where: { createdAt: { gte: todayStart, lte: todayEnd } },
       }),
-      // 今日新增需求
       this.prisma.demand.count({
-        where: { createdAt: { gte: todayStart; lte: todayEnd } },
+        where: { createdAt: { gte: todayStart, lte: todayEnd } },
       }),
-      // 今日新增报价
       this.prisma.quote.count({
-        where: { createdAt: { gte: todayStart; lte: todayEnd } },
+        where: { createdAt: { gte: todayStart, lte: todayEnd } },
       }),
-      // 今日新增订单
       this.prisma.order.count({
-        where: { createdAt: { gte: todayStart; lte: todayEnd } },
+        where: { createdAt: { gte: todayStart, lte: todayEnd } },
       }),
-      // 需求状态统计
       this.prisma.demand.groupBy({
         by: ['status'],
         _count: { status: true },
       }),
-      // 订单状态统计
       this.prisma.order.groupBy({
         by: ['status'],
         _count: { status: true },
       }),
-      // 公司审核状态统计
       this.prisma.company.groupBy({
         by: ['verifyStatus'],
         _count: { verifyStatus: true },
       }),
-      // 待审核报价数
       this.prisma.quote.count({
         where: { status: 0 },
       }),
-      // 待审核案例数
       this.prisma.case.count({
         where: { status: 0 },
       }),
@@ -818,16 +799,16 @@ export class AdminService {
       todayQuotes,
       todayOrders,
       demandStatusStats: demandStatusStats.map((item) => ({
-        status: item.status;
-        count: item._count.status;
+        status: item.status,
+        count: item._count.status,
       })),
       orderStatusStats: orderStatusStats.map((item) => ({
-        status: item.status;
-        count: item._count.status;
+        status: item.status,
+        count: item._count.status,
       })),
       companyVerifyStats: companyVerifyStats.map((item) => ({
-        status: item.verifyStatus;
-        count: item._count.verifyStatus;
+        status: item.verifyStatus,
+        count: item._count.verifyStatus,
       })),
       pendingReviewQuotes,
       pendingReviewCases,
@@ -836,41 +817,42 @@ export class AdminService {
 
   // ==================== 工具方法 ====================
 
-
   private transformCompany(company: any) {
     if (!company) return null;
-    
-      name: company.name;
-      contactPerson: company.contactPerson;
-      contactPhone: company.contactPhone;
-      licenseNo: company.licenseNo;
-      licenseImages: company.licenseImages;
-      qualification: company.qualification;
-      qualificationImages: company.qualificationImages;
-      safetyCertNo: company.safetyCertNo;
-      safetyCertImages: company.safetyCertImages;
-      establishedAt: company.establishedAt;
-      description: company.description;
-      serviceArea: company.serviceArea;
-      completedCount: company.completedCount;
-      teamCount: company.teamCount;
-      verifyStatus: company.verifyStatus;
-      verifyRemark: company.verifyRemark;
-      status: company.status;
-      createdAt: company.createdAt;
-      updatedAt: company.updatedAt;
+
+    const result: any = {
+      id: company.id,
+      name: company.name,
+      contactPerson: company.contactPerson,
+      contactPhone: company.contactPhone,
+      licenseNo: company.licenseNo,
+      licenseImages: company.licenseImages,
+      qualification: company.qualification,
+      qualificationImages: company.qualificationImages,
+      safetyCertNo: company.safetyCertNo,
+      safetyCertImages: company.safetyCertImages,
+      establishedAt: company.establishedAt,
+      description: company.description,
+      serviceArea: company.serviceArea,
+      completedCount: company.completedCount,
+      teamCount: company.teamCount,
+      verifyStatus: company.verifyStatus,
+      verifyRemark: company.verifyRemark,
+      status: company.status,
+      createdAt: company.createdAt,
+      updatedAt: company.updatedAt,
     };
 
     if (company.admins) {
       result.admins = company.admins.map((a: any) => ({
-        id: Number(a.id),
-        role: a.role;
-        createdAt: a.createdAt;
-        user: a.user;
+        id: a.id,
+        role: a.role,
+        createdAt: a.createdAt,
+        user: a.user
           ? {
-              id: Number(a.user.id),
-              nickname: a.user.nickname;
-              phone: a.user.phone;
+              id: a.user.id,
+              nickname: a.user.nickname,
+              phone: a.user.phone,
             }
           : undefined,
       }));
@@ -886,30 +868,32 @@ export class AdminService {
 
   private transformTeam(team: any) {
     if (!team) return null;
-    
-      companyId: Number(team.companyId),
-      name: team.name;
-      leaderAName: team.leaderAName;
-      leaderAPhone: team.leaderAPhone;
-      leaderBName: team.leaderBName;
-      leaderBPhone: team.leaderBPhone;
-      teamSize: team.teamSize;
-      specialties: team.specialties;
-      description: team.description;
-      serviceArea: team.serviceArea;
-      completedCount: team.completedCount;
+
+    const result: any = {
+      id: team.id,
+      companyId: team.companyId,
+      name: team.name,
+      leaderAName: team.leaderAName,
+      leaderAPhone: team.leaderAPhone,
+      leaderBName: team.leaderBName,
+      leaderBPhone: team.leaderBPhone,
+      teamSize: team.teamSize,
+      specialties: team.specialties,
+      description: team.description,
+      serviceArea: team.serviceArea,
+      completedCount: team.completedCount,
       avgRating: team.avgRating ? Number(team.avgRating) : 0,
-      reviewCount: team.reviewCount;
-      status: team.status;
-      createdAt: team.createdAt;
-      updatedAt: team.updatedAt;
+      reviewCount: team.reviewCount,
+      status: team.status,
+      createdAt: team.createdAt,
+      updatedAt: team.updatedAt,
     };
 
     if (team.company) {
       result.company = {
-        id: Number(team.company.id),
-        name: team.company.name;
-      }
+        id: team.company.id,
+        name: team.company.name,
+      };
     }
 
     if (team._count) {
@@ -924,36 +908,38 @@ export class AdminService {
 
   private transformDemand(demand: any) {
     if (!demand) return null;
-    
-      demandNo: demand.demandNo;
-      userId: Number(demand.userId),
-      demoType: demand.demoType;
-      title: demand.title;
-      description: demand.description;
-      address: demand.address;
-      district: demand.district;
+
+    const result: any = {
+      id: demand.id,
+      demandNo: demand.demandNo,
+      userId: demand.userId,
+      demoType: demand.demoType,
+      title: demand.title,
+      description: demand.description,
+      address: demand.address,
+      district: demand.district,
       longitude: demand.longitude ? Number(demand.longitude) : null,
       latitude: demand.latitude ? Number(demand.latitude) : null,
       area: demand.area ? Number(demand.area) : null,
-      floor: demand.floor;
-      expectedTime: demand.expectedTime;
-      imageIds: demand.imageIds;
-      status: demand.status;
-      selectedQuoteIds: demand.selectedQuoteIds;
-      quoteCount: demand.quoteCount;
-      viewCount: demand.viewCount;
-      expiredAt: demand.expiredAt;
-      completedAt: demand.completedAt;
-      createdAt: demand.createdAt;
-      updatedAt: demand.updatedAt;
+      floor: demand.floor,
+      expectedTime: demand.expectedTime,
+      imageIds: demand.imageIds,
+      status: demand.status,
+      selectedQuoteIds: demand.selectedQuoteIds,
+      quoteCount: demand.quoteCount,
+      viewCount: demand.viewCount,
+      expiredAt: demand.expiredAt,
+      completedAt: demand.completedAt,
+      createdAt: demand.createdAt,
+      updatedAt: demand.updatedAt,
     };
 
     if (demand.user) {
       result.user = {
-        id: Number(demand.user.id),
-        nickname: demand.user.nickname;
-        phone: demand.user.phone;
-      }
+        id: demand.user.id,
+        nickname: demand.user.nickname,
+        phone: demand.user.phone,
+      };
     }
 
     if (demand._count) {
@@ -965,43 +951,45 @@ export class AdminService {
 
   private transformQuote(quote: any) {
     if (!quote) return null;
-    
-      quoteNo: quote.quoteNo;
-      demandId: Number(quote.demandId),
-      teamId: Number(quote.teamId),
-      companyId: Number(quote.companyId),
+
+    const result: any = {
+      id: quote.id,
+      quoteNo: quote.quoteNo,
+      demandId: quote.demandId,
+      teamId: quote.teamId,
+      companyId: quote.companyId,
       price: quote.price ? Number(quote.price) : null,
-      duration: quote.duration;
-      planSummary: quote.planSummary;
-      remark: quote.remark;
-      status: quote.status;
-      reviewRemark: quote.reviewRemark;
-      reviewedAt: quote.reviewedAt;
-      reviewedBy: quote.reviewedBy ? Number(quote.reviewedBy) : null,
-      createdAt: quote.createdAt;
-      updatedAt: quote.updatedAt;
+      duration: quote.duration,
+      planSummary: quote.planSummary,
+      remark: quote.remark,
+      status: quote.status,
+      reviewRemark: quote.reviewRemark,
+      reviewedAt: quote.reviewedAt,
+      reviewedBy: quote.reviewedBy,
+      createdAt: quote.createdAt,
+      updatedAt: quote.updatedAt,
     };
 
     if (quote.demand) {
       result.demand = {
-        id: Number(quote.demand.id),
-        demandNo: quote.demand.demandNo;
-        title: quote.demand.title;
-      }
+        id: quote.demand.id,
+        demandNo: quote.demand.demandNo,
+        title: quote.demand.title,
+      };
     }
 
     if (quote.team) {
       result.team = {
-        id: Number(quote.team.id),
-        name: quote.team.name;
-      }
+        id: quote.team.id,
+        name: quote.team.name,
+      };
     }
 
     if (quote.company) {
       result.company = {
-        id: Number(quote.company.id),
-        name: quote.company.name;
-      }
+        id: quote.company.id,
+        name: quote.company.name,
+      };
     }
 
     return result;
@@ -1009,53 +997,55 @@ export class AdminService {
 
   private transformOrder(order: any) {
     if (!order) return null;
-    
-      orderNo: order.orderNo;
-      demandId: Number(order.demandId),
-      userId: Number(order.userId),
-      teamId: Number(order.teamId),
-      companyId: Number(order.companyId),
-      quoteIds: order.quoteIds;
+
+    const result: any = {
+      id: order.id,
+      orderNo: order.orderNo,
+      demandId: order.demandId,
+      userId: order.userId,
+      teamId: order.teamId,
+      companyId: order.companyId,
+      quoteIds: order.quoteIds,
       finalPrice: order.finalPrice ? Number(order.finalPrice) : null,
-      status: order.status;
-      confirmedAt: order.confirmedAt;
-      startedAt: order.startedAt;
-      completedAt: order.completedAt;
-      acceptedAt: order.acceptedAt;
-      createdBy: Number(order.createdBy),
-      createdAt: order.createdAt;
-      updatedAt: order.updatedAt;
+      status: order.status,
+      confirmedAt: order.confirmedAt,
+      startedAt: order.startedAt,
+      completedAt: order.completedAt,
+      acceptedAt: order.acceptedAt,
+      createdBy: order.createdBy,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
     };
 
     if (order.demand) {
       result.demand = {
-        id: Number(order.demand.id),
-        demandNo: order.demand.demandNo;
-        title: order.demand.title;
-        demoType: order.demand.demoType;
-      }
+        id: order.demand.id,
+        demandNo: order.demand.demandNo,
+        title: order.demand.title,
+        demoType: order.demand.demoType,
+      };
     }
 
     if (order.user) {
       result.user = {
-        id: Number(order.user.id),
-        nickname: order.user.nickname;
-        phone: order.user.phone;
-      }
+        id: order.user.id,
+        nickname: order.user.nickname,
+        phone: order.user.phone,
+      };
     }
 
     if (order.team) {
       result.team = {
-        id: Number(order.team.id),
-        name: order.team.name;
-      }
+        id: order.team.id,
+        name: order.team.name,
+      };
     }
 
     if (order.company) {
       result.company = {
-        id: Number(order.company.id),
-        name: order.company.name;
-      }
+        id: order.company.id,
+        name: order.company.name,
+      };
     }
 
     return result;
@@ -1063,33 +1053,35 @@ export class AdminService {
 
   private transformConstructionLog(log: any) {
     if (!log) return null;
-    
-      orderId: Number(log.orderId),
-      teamId: Number(log.teamId),
-      logDate: log.logDate;
-      content: log.content;
-      progress: log.progress;
-      workers: log.workers;
-      imageIds: log.imageIds;
-      videoIds: log.videoIds;
-      isAbnormal: log.isAbnormal;
-      abnormalDesc: log.abnormalDesc;
-      createdAt: log.createdAt;
-      updatedAt: log.updatedAt;
+
+    const result: any = {
+      id: log.id,
+      orderId: log.orderId,
+      teamId: log.teamId,
+      logDate: log.logDate,
+      content: log.content,
+      progress: log.progress,
+      workers: log.workers,
+      imageIds: log.imageIds,
+      videoIds: log.videoIds,
+      isAbnormal: log.isAbnormal,
+      abnormalDesc: log.abnormalDesc,
+      createdAt: log.createdAt,
+      updatedAt: log.updatedAt,
     };
 
     if (log.order) {
       result.order = {
-        id: Number(log.order.id),
-        orderNo: log.order.orderNo;
-      }
+        id: log.order.id,
+        orderNo: log.order.orderNo,
+      };
     }
 
     if (log.team) {
       result.team = {
-        id: Number(log.team.id),
-        name: log.team.name;
-      }
+        id: log.team.id,
+        name: log.team.name,
+      };
     }
 
     return result;
@@ -1097,35 +1089,37 @@ export class AdminService {
 
   private transformCase(caseItem: any) {
     if (!caseItem) return null;
-    
-      teamId: Number(caseItem.teamId),
-      companyId: Number(caseItem.companyId),
-      title: caseItem.title;
-      demoType: caseItem.demoType;
-      description: caseItem.description;
-      address: caseItem.address;
+
+    const result: any = {
+      id: caseItem.id,
+      teamId: caseItem.teamId,
+      companyId: caseItem.companyId,
+      title: caseItem.title,
+      demoType: caseItem.demoType,
+      description: caseItem.description,
+      address: caseItem.address,
       area: caseItem.area ? Number(caseItem.area) : null,
-      duration: caseItem.duration;
-      beforeImageIds: caseItem.beforeImageIds;
-      afterImageIds: caseItem.afterImageIds;
-      status: caseItem.status;
-      viewCount: caseItem.viewCount;
-      createdAt: caseItem.createdAt;
-      updatedAt: caseItem.updatedAt;
+      duration: caseItem.duration,
+      beforeImageIds: caseItem.beforeImageIds,
+      afterImageIds: caseItem.afterImageIds,
+      status: caseItem.status,
+      viewCount: caseItem.viewCount,
+      createdAt: caseItem.createdAt,
+      updatedAt: caseItem.updatedAt,
     };
 
     if (caseItem.team) {
       result.team = {
-        id: Number(caseItem.team.id),
-        name: caseItem.team.name;
-      }
+        id: caseItem.team.id,
+        name: caseItem.team.name,
+      };
     }
 
     if (caseItem.company) {
       result.company = {
-        id: Number(caseItem.company.id),
-        name: caseItem.company.name;
-      }
+        id: caseItem.company.id,
+        name: caseItem.company.name,
+      };
     }
 
     return result;

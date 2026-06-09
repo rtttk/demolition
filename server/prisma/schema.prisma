@@ -313,7 +313,7 @@ model EventLog {
   bizType     String    @map("biz_type")
   bizId       String    @map("biz_id")
   eventType   String    @map("event_type")
-  operatorId  Int?      @map("operator_id")
+  operatorId  String?   @map("operator_id") @db.VarChar(64)
   detail      Json?
   ip          String?
   createdAt   DateTime  @default(now()) @map("created_at")

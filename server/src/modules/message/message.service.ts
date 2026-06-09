@@ -9,48 +9,48 @@ import { PaginationDto } from '../../common/dto/pagination.dto';
 @Injectable()
 export class MessageService {
   constructor(
-    private prisma: PrismaService;
-    private eventLog: EventLogService;
+    private prisma: PrismaService,
+    private eventLog: EventLogService,
   ) {}
 
   /**
    * 发送消息
    */
-  async send(userId: number; data: SendMessageDto) {
+  async send(userId: string, data: SendMessageDto) {
     const message = await this.prisma.message.create({
       data: {
         orderId: data.orderId ? String(data.orderId) : null,
-        senderId: String(userId),
-        senderRole: 0;
+        senderId: userId,
+        senderRole: 0,
         receiverId: String(data.receiverId),
-        content: data.content || null;
-        imageIds: data.imageIds ? data.imageIds as any : Prisma.JsonNull;
+        content: data.content || null,
+        imageIds: data.imageIds ? data.imageIds as any : Prisma.JsonNull,
       },
       include: {
         sender: {
           select: {
-            id: true;
-            nickname: true;
-            avatarUrl: true;
+            id: true,
+            nickname: true,
+            avatarUrl: true,
           },
         },
         receiver: {
           select: {
-            id: true;
-            nickname: true;
-            avatarUrl: true;
+            id: true,
+            nickname: true,
+            avatarUrl: true,
           },
         },
       },
-	});
+    } as any);
 
     await this.eventLog.log({
-      bizType: 'message';
-      bizId: Number(message.id),
-      eventType: 'send';
-      operatorId: userId;
+      bizType: 'message',
+      bizId: message.id,
+      eventType: 'send',
+      operatorId: userId,
       detail: { receiverId: data.receiverId },
-});
+    });
 
     return message;
   }
@@ -58,76 +58,78 @@ export class MessageService {
   /**
    * 消息列表（当前用户发送或接收的消息）
    */
-  async getList(userId: number; pagination: PaginationDto; type?: string) {
-    
-        { senderId: String(userId) },
-        { receiverId: String(userId) },
+  async getList(userId: string, pagination: PaginationDto, type?: string) {
+    const where = {
+      OR: [
+        { senderId: userId },
+        { receiverId: userId },
       ],
     };
 
     const [list, total] = await Promise.all([
       this.prisma.message.findMany({
         where,
-        skip: pagination.skip;
-        take: pagination.take;
+        skip: pagination.skip,
+        take: pagination.take,
         orderBy: { createdAt: 'desc' },
         include: {
           sender: {
             select: {
-              id: true;
-              nickname: true;
-              avatarUrl: true;
+              id: true,
+              nickname: true,
+              avatarUrl: true,
             },
           },
           receiver: {
             select: {
-              id: true;
-              nickname: true;
-              avatarUrl: true;
+              id: true,
+              nickname: true,
+              avatarUrl: true,
             },
           },
         },
-      }),
+      } as any),
       this.prisma.message.count({ where }),
     ]);
 
-    return {list,
+    return {
+      list,
       total,
-      page: pagination.page;
-      pageSize: pagination.pageSize;
+      page: pagination.page,
+      pageSize: pagination.pageSize,
     };
   }
 
   /**
    * 未读消息数
    */
-  async getUnreadCount(userId: number) {
+  async getUnreadCount(userId: string) {
     const count = await this.prisma.message.count({
       where: {
-        receiverId: String(userId),
-        isRead: false;
+        receiverId: userId,
+        isRead: false,
       },
-	});
+    });
 
-    return {count };
+    return { count };
   }
 
   /**
    * 标记单条消息已读
    */
-  async markRead(id: number) {
+  async markRead(id: string) {
     const message = await this.prisma.message.findUnique({
-      where: { id: String(id) },
-});
+      where: { id },
+    });
 
     if (!message) {
       throw new NotFoundException('消息不存在');
     }
 
     const updated = await this.prisma.message.update({
-      where: { id: String(id) },
+      where: { id },
       data: { isRead: true },
-});
+    });
 
     return updated;
   }
@@ -135,17 +137,17 @@ export class MessageService {
   /**
    * 全部标记已读
    */
-  async markAllRead(userId: number) {
+  async markAllRead(userId: string) {
     const result = await this.prisma.message.updateMany({
       where: {
-        receiverId: String(userId),
-        isRead: false;
+        receiverId: userId,
+        isRead: false,
       },
       data: {
-        isRead: true;
+        isRead: true,
       },
-	});
+    });
 
-    return {count: result.count };
+    return { count: result.count };
   }
 }

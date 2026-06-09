@@ -14,23 +14,23 @@ import { CompanyService } from '../company/company.service';
 @Injectable()
 export class TeamService {
   constructor(
-    private prisma: PrismaService;
-    private eventLog: EventLogService;
-    private companyService: CompanyService;
+    private prisma: PrismaService,
+    private eventLog: EventLogService,
+    private companyService: CompanyService,
   ) {}
 
   /**
    * 创建团队
    * 需验证：1. 是公司管理员 2. 公司已认证 verify_status=1
    */
-  async create(userId: number; data: CreateTeamDto) {
+  async create(userId: string, data: CreateTeamDto) {
     // 验证是公司管理员
     await this.companyService.checkCompanyAdmin(userId, data.companyId);
 
     // 验证公司已认证
     const company = await this.prisma.company.findUnique({
-      where: { id: String(data.companyId) },
-});
+      where: { id: data.companyId },
+    });
     if (!company) {
       throw new NotFoundException('公司不存在');
     }
@@ -40,42 +40,39 @@ export class TeamService {
 
     const team = await this.prisma.team.create({
       data: {
-        companyId: String(data.companyId),
-        name: data.name;
-        leaderAName: data.leaderAName;
-        leaderAPhone: data.leaderAPhone;
-        leaderBName: data.leaderBName;
-        leaderBPhone: data.leaderBPhone;
-        teamSize: data.teamSize ?? 1;
+        companyId: data.companyId,
+        name: data.name,
+        leaderAName: data.leaderAName,
+        leaderAPhone: data.leaderAPhone,
+        leaderBName: data.leaderBName,
+        leaderBPhone: data.leaderBPhone,
+        teamSize: data.teamSize ?? 1,
         specialties: data.specialties ? JSON.parse(data.specialties) : undefined,
-        description: data.description;
+        description: data.description,
         serviceArea: data.serviceArea ? JSON.parse(data.serviceArea) : undefined,
       },
-      include: {
-        company: true;
-      },
-	});
+    });
 
     // 自动更新 company 的 team_count
     await this.prisma.company.update({
       where: { id: String(data.companyId) },
       data: {
         teamCount: {
-          increment: 1;
+          increment: 1,
         },
       },
-	});
+    });
 
     await this.eventLog.log({
-      bizType: 'team';
-      bizId: Number(team.id),
-      eventType: 'create';
-      operatorId: userId;
+      bizType: 'team',
+      bizId: team.id,
+      eventType: 'create',
+      operatorId: userId,
       detail: {
-        teamName: data.name;
-        companyId: data.companyId;
+        teamName: data.name,
+        companyId: data.companyId,
       },
-	});
+    });
 
     return this.transformTeam(team);
   }
@@ -83,16 +80,16 @@ export class TeamService {
   /**
    * 编辑团队
    */
-  async update(userId: number; teamId: number; data: UpdateTeamDto) {
+  async update(userId: string, teamId: string, data: UpdateTeamDto) {
     const team = await this.prisma.team.findUnique({
-      where: { id: String(teamId) },
-});
+      where: { id: teamId },
+    });
     if (!team) {
       throw new NotFoundException('团队不存在');
     }
 
     // 验证是公司管理员
-    await this.companyService.checkCompanyAdmin(userId, Number(team.companyId));
+    await this.companyService.checkCompanyAdmin(userId, team.companyId);
 
     const updateData: any = {};
     if (data.name !== undefined) updateData.name = data.name;
@@ -106,20 +103,17 @@ export class TeamService {
     if (data.serviceArea !== undefined) updateData.serviceArea = JSON.parse(data.serviceArea);
 
     const updated = await this.prisma.team.update({
-      where: { id: String(teamId) },
-      data: updateData;
-      include: {
-        company: true;
-      },
-	});
+      where: { id: teamId },
+      data: updateData,
+    });
 
     await this.eventLog.log({
-      bizType: 'team';
-      bizId: teamId;
-      eventType: 'update';
-      operatorId: userId;
+      bizType: 'team',
+      bizId: teamId,
+      eventType: 'update',
+      operatorId: userId,
       detail: { fields: Object.keys(data) },
-});
+    });
 
     return this.transformTeam(updated);
   }
@@ -127,46 +121,43 @@ export class TeamService {
   /**
    * 停用团队
    */
-  async delete(userId: number; teamId: number) {
+  async delete(userId: string, teamId: string) {
     const team = await this.prisma.team.findUnique({
-      where: { id: String(teamId) },
-});
+      where: { id: teamId },
+    });
     if (!team) {
       throw new NotFoundException('团队不存在');
     }
 
     // 验证是公司管理员
-    await this.companyService.checkCompanyAdmin(userId, Number(team.companyId));
+    await this.companyService.checkCompanyAdmin(userId, team.companyId);
 
     if (team.status === 0) {
       throw new BadRequestException('团队已停用');
     }
 
     const updated = await this.prisma.team.update({
-      where: { id: String(teamId) },
+      where: { id: teamId },
       data: { status: 0 },
-      include: {
-        company: true;
-      },
-	});
+    });
 
     // 更新 company 的 team_count
     await this.prisma.company.update({
       where: { id: team.companyId },
       data: {
         teamCount: {
-          decrement: 1;
+          decrement: 1,
         },
       },
-	});
+    });
 
     await this.eventLog.log({
-      bizType: 'team';
-      bizId: teamId;
-      eventType: 'delete';
-      operatorId: userId;
+      bizType: 'team',
+      bizId: teamId,
+      eventType: 'delete',
+      operatorId: userId,
       detail: { teamName: team.name },
-});
+    });
 
     return this.transformTeam(updated);
   }
@@ -174,12 +165,12 @@ export class TeamService {
   /**
    * 获取我所在公司的团队列表
    */
-  async getMyTeams(userId: number) {
+  async getMyTeams(userId: string) {
     // 查找用户管理的公司
     const admins = await this.prisma.companyAdmin.findMany({
-      where: { userId: String(userId) },
+      where: { userId: userId },
       select: { companyId: true },
-});
+    });
 
     const companyIds = admins.map((a) => a.companyId);
 
@@ -190,21 +181,21 @@ export class TeamService {
     const teams = await this.prisma.team.findMany({
       where: {
         companyId: { in: companyIds },
-        status: 1;
+        status: 1,
       },
       include: {
         company: {
           select: {
-            id: true;
-            name: true;
+            id: true,
+            name: true,
           },
         },
         _count: {
-          select: { members: true; cases: true; reviews: true },
+          select: { members: true, cases: true, reviews: true },
         },
       },
       orderBy: { createdAt: 'desc' },
-});
+    } as any);
 
     return teams.map((t) => this.transformTeam(t));
   }
@@ -212,23 +203,23 @@ export class TeamService {
   /**
    * 获取团队公开信息（含公司信息、评分、案例数）
    */
-  async getTeamById(id: number) {
+  async getTeamById(id: string) {
     const team = await this.prisma.team.findUnique({
-      where: { id: String(id) },
+      where: { id },
       include: {
         company: {
           select: {
-            id: true;
-            name: true;
-            qualification: true;
-            verifyStatus: true;
+            id: true,
+            name: true,
+            qualification: true,
+            verifyStatus: true,
           },
         },
         _count: {
-          select: { members: true; cases: true; reviews: true },
+          select: { members: true, cases: true, reviews: true },
         },
       },
-	});
+    } as any);
 
     if (!team) {
       throw new NotFoundException('团队不存在');
@@ -240,11 +231,11 @@ export class TeamService {
   /**
    * 获取团队案例
    */
-  async getTeamCases(teamId: number; pagination: PaginationDto) {
+  async getTeamCases(teamId: string, pagination: PaginationDto) {
     const team = await this.prisma.team.findUnique({
-      where: { id: String(teamId) },
+      where: { id: teamId },
       select: { id: true },
-});
+    });
     if (!team) {
       throw new NotFoundException('团队不存在');
     }
@@ -252,36 +243,37 @@ export class TeamService {
     const [list, total] = await Promise.all([
       this.prisma.case.findMany({
         where: {
-          teamId: String(teamId),
-          status: 1;
+          teamId: teamId,
+          status: 1,
         },
-        skip: pagination.skip;
-        take: pagination.take;
+        skip: pagination.skip,
+        take: pagination.take,
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.case.count({
         where: {
-          teamId: String(teamId),
-          status: 1;
+          teamId: teamId,
+          status: 1,
         },
       }),
     ]);
 
-    return {list: list.map((c) => this.transformString(c)),
+    return {
+      list: list.map((c) => this.transformCase(c)),
       total,
-      page: pagination.page;
-      pageSize: pagination.pageSize;
+      page: pagination.page,
+      pageSize: pagination.pageSize,
     };
   }
 
   /**
    * 获取团队评价
    */
-  async getTeamReviews(teamId: number; pagination: PaginationDto) {
+  async getTeamReviews(teamId: string, pagination: PaginationDto) {
     const team = await this.prisma.team.findUnique({
-      where: { id: String(teamId) },
+      where: { id: teamId },
       select: { id: true },
-});
+    });
     if (!team) {
       throw new NotFoundException('团队不存在');
     }
@@ -289,48 +281,49 @@ export class TeamService {
     const [list, total] = await Promise.all([
       this.prisma.review.findMany({
         where: {
-          teamId: String(teamId),
-          status: 1;
+          teamId: teamId,
+          status: 1,
         },
-        skip: pagination.skip;
-        take: pagination.take;
+        skip: pagination.skip,
+        take: pagination.take,
         orderBy: { createdAt: 'desc' },
         include: {
           user: {
             select: {
-              id: true;
-              nickname: true;
-              avatarUrl: true;
+              id: true,
+              nickname: true,
+              avatarUrl: true,
             },
           },
         },
-      }),
+      } as any),
       this.prisma.review.count({
         where: {
-          teamId: String(teamId),
-          status: 1;
+          teamId: teamId,
+          status: 1,
         },
       }),
     ]);
 
-    return {list: list.map((r) => this.transformString(r)),
+    return {
+      list: list.map((r) => this.transformReview(r)),
       total,
-      page: pagination.page;
-      pageSize: pagination.pageSize;
+      page: pagination.page,
+      pageSize: pagination.pageSize,
     };
   }
 
   /**
    * 获取团队列表（管理用）
    */
-  async getTeamList(pagination: PaginationDto; filters?: any) {
+  async getTeamList(pagination: PaginationDto, filters?: any) {
     const where: any = {};
 
     if (filters?.companyId) {
       where.companyId = String(filters.companyId);
     }
     if (filters?.name) {
-      where.name = { contains: filters.name }
+      where.name = { contains: filters.name };
     }
     if (filters?.status !== undefined) {
       where.status = Number(filters.status);
@@ -339,70 +332,76 @@ export class TeamService {
     const [list, total] = await Promise.all([
       this.prisma.team.findMany({
         where,
-        skip: pagination.skip;
-        take: pagination.take;
+        skip: pagination.skip,
+        take: pagination.take,
         orderBy: { createdAt: 'desc' },
-        include: {
-          company: {
-            select: {
-              id: true;
-              name: true;
-            },
-          },
-          _count: {
-            select: { members: true; cases: true; reviews: true },
-          },
-        },
-      }),
+      } as any),
       this.prisma.team.count({ where }),
     ]);
 
-    return {list: list.map((t) => this.transformTeam(t)),
+    return {
+      list: list.map((t) => this.transformTeam(t)),
       total,
-      page: pagination.page;
-      pageSize: pagination.pageSize;
+      page: pagination.page,
+      pageSize: pagination.pageSize,
     };
   }
 
   /**
-   * 转换团队数据，BigInt 转 number
+   * 转换团队数据
    */
   private transformTeam(team: any) {
     if (!team) return null;
-    
-      companyId: Number(team.companyId),
-      name: team.name;
-      leaderAName: team.leaderAName;
-      leaderAPhone: team.leaderAPhone;
-      leaderBName: team.leaderBName;
-      leaderBPhone: team.leaderBPhone;
-      teamSize: team.teamSize;
-      specialties: team.specialties;
-      description: team.description;
-      serviceArea: team.serviceArea;
-      completedCount: team.completedCount;
+
+    const result: any = {
+      id: team.id,
+      companyId: team.companyId,
+      name: team.name,
+      leaderAName: team.leaderAName,
+      leaderAPhone: team.leaderAPhone,
+      leaderBName: team.leaderBName,
+      leaderBPhone: team.leaderBPhone,
+      teamSize: team.teamSize,
+      specialties: team.specialties,
+      description: team.description,
+      serviceArea: team.serviceArea,
+      completedCount: team.completedCount,
       avgRating: team.avgRating ? Number(team.avgRating) : 0,
-      reviewCount: team.reviewCount;
-      status: team.status;
-      createdAt: team.createdAt;
-      updatedAt: team.updatedAt;
+      reviewCount: team.reviewCount,
+      status: team.status,
+      createdAt: team.createdAt,
+      updatedAt: team.updatedAt,
     };
 
     if (team.company) {
       result.company = {
-        id: Number(team.company.id),
-        name: team.company.name;
-        qualification: team.company.qualification;
-        verifyStatus: team.company.verifyStatus;
-      }
+        id: team.company.id,
+        name: team.company.name,
+        qualification: team.company.qualification,
+        verifyStatus: team.company.verifyStatus,
+      };
     }
 
     if (team._count) {
       result.memberCount = team._count.members;
       result.caseCount = team._count.cases;
+      result.reviewCount = team._count.reviews;
     }
 
     return result;
   }
 
+  /**
+   * 转换案例数据
+   */
+  private transformCase(c: any) {
+    return c;
+  }
+
+  /**
+   * 转换评价数据
+   */
+  private transformReview(r: any) {
+    return r;
+  }
 }

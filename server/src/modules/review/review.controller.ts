@@ -5,7 +5,6 @@ import {
   Body,
   Query,
   UseGuards,
-  ParseIntPipe,
 } from '@nestjs/common';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -29,7 +28,7 @@ export class ReviewController {
   @Roles(1)
   @ApiOperation({ summary: '创建评价' })
   async create(
-    @CurrentUser('id') userId: number,
+    @CurrentUser('id') userId: string,
     @Body() dto: CreateReviewDto,
   ) {
     return this.reviewService.create(userId, dto);
@@ -42,7 +41,7 @@ export class ReviewController {
   @Public()
   @ApiOperation({ summary: '评价列表' })
   async getList(
-    @Query('teamId', ParseIntPipe) teamId: number,
+    @Query('teamId') teamId: string,
     @Query() pagination: PaginationDto,
   ) {
     return this.reviewService.getList(teamId, pagination);

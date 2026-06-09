@@ -7,7 +7,6 @@ import {
   Body,
   Query,
   Param,
-  ParseIntPipe,
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
@@ -53,9 +52,9 @@ export class AdminController {
   @Put('users/:id/status')
   @ApiOperation({ summary: '启用/禁用用户' })
   async updateUserStatus(
-    @CurrentUser('id') userId: number,
-    @Param('id', ParseIntPipe) targetId: number,
-    @Body('status', ParseIntPipe) status: number,
+    @CurrentUser('id') userId: string,
+    @Param('id') targetId: string,
+    @Body('status') status: number,
   ) {
     return this.adminService.updateUserStatus(userId, targetId, status);
   }
@@ -63,9 +62,9 @@ export class AdminController {
   @Put('users/:id/roles')
   @ApiOperation({ summary: '分配用户角色' })
   async assignUserRoles(
-    @CurrentUser('id') userId: number,
-    @Param('id', ParseIntPipe) targetId: number,
-    @Body('roles', ParseIntPipe) roles: number[],
+    @CurrentUser('id') userId: string,
+    @Param('id') targetId: string,
+    @Body('roles') roles: number[],
   ) {
     return this.adminService.assignUserRoles(userId, targetId, roles);
   }
@@ -91,12 +90,11 @@ export class AdminController {
   @Put('companies/:id/verify')
   @ApiOperation({ summary: '审核公司资质' })
   async verifyCompany(
-    @CurrentUser('id') userId: number,
-    @Param('id', ParseIntPipe) companyId: number,
+    @CurrentUser('id') userId: string,
+    @Param('id') companyId: string,
     @Body() body: { action: 'passed' | 'rejected'; remark?: string },
   ) {
     return this.adminService.verifyCompany(
-      userId,
       companyId,
       body.action,
       body.remark,
@@ -106,7 +104,7 @@ export class AdminController {
   @Get('companies/:id/teams')
   @ApiOperation({ summary: '查看公司下属团队' })
   async getCompanyTeams(
-    @Param('id', ParseIntPipe) companyId: number,
+    @Param('id') companyId: string,
     @Query() pagination: PaginationDto,
   ) {
     return this.adminService.getCompanyTeams(companyId, pagination);
@@ -133,9 +131,9 @@ export class AdminController {
   @Put('teams/:id/status')
   @ApiOperation({ summary: '启用/禁用团队' })
   async updateTeamStatus(
-    @CurrentUser('id') userId: number,
-    @Param('id', ParseIntPipe) teamId: number,
-    @Body('status', ParseIntPipe) status: number,
+    @CurrentUser('id') userId: string,
+    @Param('id') teamId: string,
+    @Body('status') status: number,
   ) {
     return this.adminService.updateTeamStatus(userId, teamId, status);
   }
@@ -161,9 +159,9 @@ export class AdminController {
   @Put('demands/:id/status')
   @ApiOperation({ summary: '审核需求（下架等操作）' })
   async updateDemandStatus(
-    @CurrentUser('id') userId: number,
-    @Param('id', ParseIntPipe) demandId: number,
-    @Body('status', ParseIntPipe) status: number,
+    @CurrentUser('id') userId: string,
+    @Param('id') demandId: string,
+    @Body('status') status: number,
   ) {
     return this.adminService.updateDemandStatus(userId, demandId, status);
   }
@@ -189,11 +187,11 @@ export class AdminController {
   @Put('quotes/:id/review')
   @ApiOperation({ summary: '审核报价' })
   async reviewQuote(
-    @CurrentUser('id') userId: number,
-    @Param('id', ParseIntPipe) quoteId: number,
+    @CurrentUser('id') userId: string,
+    @Param('id') quoteId: string,
     @Body() body: { action: 'passed' | 'rejected'; remark?: string },
   ) {
-    return this.adminService.reviewQuote(userId, quoteId, body.action, body.remark);
+    return this.adminService.reviewQuote(quoteId, body.action, body.remark, userId);
   }
 
   // ==================== 订单管理 ====================
@@ -251,8 +249,8 @@ export class AdminController {
   @Put('cases/:id/status')
   @ApiOperation({ summary: '审核案例' })
   async updateCaseStatus(
-    @CurrentUser('id') userId: number,
-    @Param('id', ParseIntPipe) caseId: number,
+    @CurrentUser('id') userId: string,
+    @Param('id') caseId: string,
     @Body() body: { action: 'passed' | 'rejected' },
   ) {
     return this.adminService.updateCaseStatus(userId, caseId, body.action);
@@ -290,7 +288,7 @@ export class AdminController {
   @Put('compliance/:id')
   @ApiOperation({ summary: '编辑合规模板' })
   async updateCompliance(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
     @Body() body: {
       title?: string;
       category?: string;
@@ -306,7 +304,7 @@ export class AdminController {
 
   @Delete('compliance/:id')
   @ApiOperation({ summary: '删除合规模板' })
-  async deleteCompliance(@Param('id', ParseIntPipe) id: number) {
+  async deleteCompliance(@Param('id') id: string) {
     return this.adminService.deleteCompliance(id);
   }
 }

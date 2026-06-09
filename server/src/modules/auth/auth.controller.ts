@@ -35,7 +35,7 @@ export class AuthController {
   @Post('bind-phone')
   @ApiOperation({ summary: '微信用户绑定手机号' })
   async bindPhoneForNewUser(
-    @CurrentUser('userId') userId: number,
+    @CurrentUser('userId') userId: string,
     @Req() req: Request,
     @Body() dto: BindPhoneDto,
   ) {

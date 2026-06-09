@@ -6,7 +6,6 @@ import {
   Param,
   Query,
   UseGuards,
-  ParseIntPipe,
 } from '@nestjs/common';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -29,7 +28,7 @@ export class QuoteController {
   @Roles(2)
   @ApiOperation({ summary: '提交报价' })
   async submit(
-    @CurrentUser('id') userId: number,
+    @CurrentUser('id') userId: string,
     @Body() dto: SubmitQuoteDto,
   ) {
     return this.quoteService.submit(userId, dto);
@@ -42,7 +41,7 @@ export class QuoteController {
   @Roles(2)
   @ApiOperation({ summary: '我的报价列表' })
   async getMyQuotes(
-    @CurrentUser('id') userId: number,
+    @CurrentUser('id') userId: string,
     @Query() pagination: PaginationDto,
     @Query('status') status?: number,
   ) {
@@ -58,7 +57,7 @@ export class QuoteController {
    */
   @Get(':id')
   @ApiOperation({ summary: '报价详情' })
-  async getQuoteById(@Param('id', ParseIntPipe) id: number) {
+  async getQuoteById(@Param('id') id: string) {
     return this.quoteService.getQuoteById(id);
   }
 }

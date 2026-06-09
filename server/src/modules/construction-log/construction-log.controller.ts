@@ -7,7 +7,6 @@ import {
   Param,
   Query,
   UseGuards,
-  ParseIntPipe,
 } from '@nestjs/common';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -31,7 +30,7 @@ export class ConstructionLogController {
   @Roles(2)
   @ApiOperation({ summary: '创建施工日志' })
   async create(
-    @CurrentUser('id') userId: number,
+    @CurrentUser('id') userId: string,
     @Body() dto: CreateLogDto,
   ) {
     return this.constructionLogService.create(userId, dto);
@@ -43,7 +42,7 @@ export class ConstructionLogController {
   @Get()
   @ApiOperation({ summary: '获取施工日志列表' })
   async getList(
-    @Query('orderId', ParseIntPipe) orderId: number,
+    @Query('orderId') orderId: string,
     @Query() pagination: PaginationDto,
   ) {
     return this.constructionLogService.getList(orderId, pagination);
@@ -55,7 +54,7 @@ export class ConstructionLogController {
   @Get('check')
   @ApiOperation({ summary: '检查今日是否已提交日志' })
   async checkToday(
-    @Query('orderId', ParseIntPipe) orderId: number,
+    @Query('orderId') orderId: string,
   ) {
     return this.constructionLogService.checkToday(orderId);
   }
@@ -67,8 +66,8 @@ export class ConstructionLogController {
   @Roles(2)
   @ApiOperation({ summary: '更新施工日志' })
   async update(
-    @CurrentUser('id') userId: number,
-    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser('id') userId: string,
+    @Param('id') id: string,
     @Body() dto: UpdateLogDto,
   ) {
     return this.constructionLogService.update(userId, id, dto);

@@ -7,7 +7,6 @@ import {
   Param,
   Query,
   UseGuards,
-  ParseIntPipe,
 } from '@nestjs/common';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -30,7 +29,7 @@ export class OrderController {
   @Roles(2)
   @ApiOperation({ summary: '创建订单' })
   async create(
-    @CurrentUser('id') userId: number,
+    @CurrentUser('id') userId: string,
     @Body() dto: CreateOrderDto,
   ) {
     return this.orderService.create(userId, dto);
@@ -42,7 +41,7 @@ export class OrderController {
   @Get('my')
   @ApiOperation({ summary: '我的订单列表' })
   async getMyOrders(
-    @CurrentUser('id') userId: number,
+    @CurrentUser('id') userId: string,
     @Query() pagination: PaginationDto,
     @Query('status') status?: number,
   ) {
@@ -59,8 +58,8 @@ export class OrderController {
   @Get(':id')
   @ApiOperation({ summary: '订单详情' })
   async findById(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser('id') userId?: number,
+    @Param('id') id: string,
+    @CurrentUser('id') userId?: string,
   ) {
     return this.orderService.findById(id, userId);
   }
@@ -72,8 +71,8 @@ export class OrderController {
   @Roles(1)
   @ApiOperation({ summary: '确认合作' })
   async confirm(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser('id') userId: number,
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
   ) {
     return this.orderService.confirm(userId, id);
   }
@@ -85,8 +84,8 @@ export class OrderController {
   @Roles(1)
   @ApiOperation({ summary: '验收确认' })
   async accept(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser('id') userId: number,
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
   ) {
     return this.orderService.accept(userId, id);
   }
@@ -97,8 +96,8 @@ export class OrderController {
   @Put(':id/cancel')
   @ApiOperation({ summary: '取消订单' })
   async cancel(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser('id') userId: number,
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
   ) {
     return this.orderService.cancel(userId, id);
   }

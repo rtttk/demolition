@@ -9,29 +9,29 @@ import { EventLogService } from '../event-log/event-log.service';
 @Injectable()
 export class ConstructionLogService {
   constructor(
-    private prisma: PrismaService;
-    private eventLog: EventLogService;
+    private prisma: PrismaService,
+    private eventLog: EventLogService,
   ) {}
 
   /**
    * 创建施工日志（服务方）
    * 如果当天已有日志则更新
    */
-  async create(userId: number; data: CreateLogDto) {
+  async create(userId: string, data: CreateLogDto) {
     // 查找订单并验证用户是关联团队的人员
     const order = await this.prisma.order.findUnique({
       where: { id: String(data.orderId) },
-      select: { teamId: true; status: true },
-});
+      select: { teamId: true, status: true },
+    });
 
     if (!order) {
       throw new NotFoundException('订单不存在');
     }
 
     const user = await this.prisma.user.findUnique({
-      where: { id: String(userId) },
+      where: { id: userId },
       select: { teamId: true },
-});
+    });
 
     if (!user || Number(user.teamId) !== Number(order.teamId)) {
       throw new ForbiddenException('您不是该订单关联团队的人员');
@@ -48,27 +48,27 @@ export class ConstructionLogService {
           logDate: new Date(logDate),
         },
       },
-	});
+    });
 
     if (existingLog) {
       // 已存在则更新
       const updated = await this.prisma.constructionLog.update({
         where: { id: existingLog.id },
         data: {
-          content: data.content;
-          progress: data.progress;
-          imageIds: data.imageIds ? data.imageIds as any : null;
-          videoIds: data.videoIds ? data.videoIds as any : null;
+          content: data.content,
+          progress: data.progress,
+          imageIds: data.imageIds ? data.imageIds as any : null,
+          videoIds: data.videoIds ? data.videoIds as any : null,
         },
-	});
+      });
 
       await this.eventLog.log({
-        bizType: 'construction_log';
-        bizId: Number(updated.id),
-        eventType: 'update';
-        operatorId: userId;
-        detail: { orderId: data.orderId; logDate },
-});
+        bizType: 'construction_log',
+        bizId: updated.id,
+        eventType: 'update',
+        operatorId: userId,
+        detail: { orderId: data.orderId, logDate },
+      });
 
       return updated;
     }
@@ -76,22 +76,22 @@ export class ConstructionLogService {
     const log = await this.prisma.constructionLog.create({
       data: {
         orderId: String(data.orderId),
-        teamId: order.teamId;
+        teamId: order.teamId,
         logDate: new Date(logDate),
-        content: data.content;
-        progress: data.progress;
-        imageIds: data.imageIds ? data.imageIds as any : null;
-        videoIds: data.videoIds ? data.videoIds as any : null;
+        content: data.content,
+        progress: data.progress,
+        imageIds: data.imageIds ? data.imageIds as any : null,
+        videoIds: data.videoIds ? data.videoIds as any : null,
       },
-	});
+    });
 
     await this.eventLog.log({
-      bizType: 'construction_log';
-      bizId: Number(log.id),
-      eventType: 'create';
-      operatorId: userId;
-      detail: { orderId: data.orderId; logDate },
-});
+      bizType: 'construction_log',
+      bizId: log.id,
+      eventType: 'create',
+      operatorId: userId,
+      detail: { orderId: data.orderId, logDate },
+    });
 
     return log;
   }
@@ -99,14 +99,14 @@ export class ConstructionLogService {
   /**
    * 获取施工日志列表
    */
-  async getList(orderId: number; pagination: PaginationDto) {
-    const where: any = { orderId: String(orderId) };
+  async getList(orderId: string, pagination: PaginationDto) {
+    const where: any = { orderId: orderId };
 
     const [list, total] = await Promise.all([
       this.prisma.constructionLog.findMany({
         where,
-        skip: pagination.skip;
-        take: pagination.take;
+        skip: pagination.skip,
+        take: pagination.take,
         orderBy: { logDate: 'desc' },
       }),
       this.prisma.constructionLog.count({ where }),
@@ -114,36 +114,36 @@ export class ConstructionLogService {
 
     return {list,
       total,
-      page: pagination.page;
-      pageSize: pagination.pageSize;
+      page: pagination.page,
+      pageSize: pagination.pageSize,
     };
   }
 
   /**
    * 检查今日是否已提交日志
    */
-  async checkToday(orderId: number) {
+  async checkToday(orderId: string) {
     const logDate = new Date().toISOString().split('T')[0];
 
     const log = await this.prisma.constructionLog.findFirst({
       where: {
-        orderId: String(orderId),
+        orderId: orderId,
         logDate: new Date(logDate),
       },
-	});
+    });
 
-    return {exists: !!log;
-      log: log || null;
+    return {exists: !!log,
+      log: log || null,
     };
   }
 
   /**
    * 更新施工日志
    */
-  async update(userId: number; logId: number; data: UpdateLogDto) {
+  async update(userId: string, logId: string, data: UpdateLogDto) {
     const log = await this.prisma.constructionLog.findUnique({
-      where: { id: String(logId) },
-});
+      where: { id: logId },
+    });
 
     if (!log) {
       throw new NotFoundException('施工日志不存在');
@@ -151,11 +151,11 @@ export class ConstructionLogService {
 
     // 验证用户是关联团队的人员
     const user = await this.prisma.user.findUnique({
-      where: { id: String(userId) },
+      where: { id: userId },
       select: { teamId: true },
-});
+    });
 
-    if (!user || Number(user.teamId) !== Number(log.teamId)) {
+    if (!user || user.teamId !== log.teamId) {
       throw new ForbiddenException('您不是该施工日志关联团队的人员');
     }
 
@@ -166,17 +166,17 @@ export class ConstructionLogService {
     if (data.videoIds !== undefined) updateData.videoIds = data.videoIds as any;
 
     const updated = await this.prisma.constructionLog.update({
-      where: { id: String(logId) },
-      data: updateData;
-    };
+      where: { id: logId },
+      data: updateData,
+    });
 
     await this.eventLog.log({
-      bizType: 'construction_log';
-      bizId: logId;
-      eventType: 'update';
-      operatorId: userId;
-      detail: updateData;
-    };
+      bizType: 'construction_log',
+      bizId: logId,
+      eventType: 'update',
+      operatorId: userId,
+      detail: updateData,
+    });
 
     return updated;
   }

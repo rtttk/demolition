@@ -6,7 +6,6 @@ import {
   Param,
   Query,
   UseGuards,
-  ParseIntPipe,
 } from '@nestjs/common';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -30,7 +29,7 @@ export class CaseController {
   @Roles(2)
   @ApiOperation({ summary: '创建案例' })
   async create(
-    @CurrentUser('id') userId: number,
+    @CurrentUser('id') userId: string,
     @Body() dto: CreateCaseDto,
   ) {
     return this.caseService.create(userId, dto);
@@ -70,7 +69,7 @@ export class CaseController {
   @Get(':id')
   @Public()
   @ApiOperation({ summary: '案例详情' })
-  async findById(@Param('id', ParseIntPipe) id: number) {
+  async findById(@Param('id') id: string) {
     return this.caseService.findById(id);
   }
 }

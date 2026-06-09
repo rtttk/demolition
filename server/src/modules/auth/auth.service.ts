@@ -7,24 +7,24 @@ import { REDIS_CLIENT } from '../../common/redis/redis.module';
 import Redis from 'ioredis';
 
 interface TokenResult {
-  accessToken: string,
-  refreshToken: string,
-  expiresIn: number,
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
 }
 
 interface WechatSessionResult {
-  openid: string,
-  session_key: string,
-  unionid?: string,
-  errcode?: number,
-  errmsg?: string,
+  openid: string;
+  session_key: string;
+  unionid?: string;
+  errcode?: number;
+  errmsg?: string;
 }
 
 interface WechatStableAccessTokenResult {
-  errcode?: number,
-  errmsg?: string,
-  access_token?: string,
-  expires_in?: number,
+  errcode?: number;
+  errmsg?: string;
+  access_token?: string;
+  expires_in?: number;
 }
 
 @Injectable()
@@ -441,7 +441,7 @@ export class AuthService {
     const accessToken = this.jwtService.sign(payload);
     const refreshToken = this.jwtService.sign(payload, {
       secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-      expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d'),
+      expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d') as any,
     });
 
     const expiresIn = this.parseExpireTime(

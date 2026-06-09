@@ -26,14 +26,14 @@ export class UserController {
 
   @Get('profile')
   @ApiOperation({ summary: '获取当前用户信息' })
-  async getProfile(@CurrentUser('id') userId: number) {
+  async getProfile(@CurrentUser('id') userId: string) {
     return this.userService.findById(userId);
   }
 
   @Put('profile')
   @ApiOperation({ summary: '更新用户信息' })
   async updateProfile(
-    @CurrentUser('id') userId: number,
+    @CurrentUser('id') userId: string,
     @Body() dto: UpdateProfileDto,
   ) {
     return this.userService.updateProfile(userId, dto);
@@ -41,14 +41,14 @@ export class UserController {
 
   @Get('roles')
   @ApiOperation({ summary: '获取用户角色列表' })
-  async getUserRoles(@CurrentUser('id') userId: number) {
+  async getUserRoles(@CurrentUser('id') userId: string) {
     return this.userService.getUserRoles(userId);
   }
 
   @Put('role')
   @ApiOperation({ summary: '切换当前角色' })
   async switchRole(
-    @CurrentUser('id') userId: number,
+    @CurrentUser('id') userId: string,
     @Body() dto: SwitchRoleDto,
   ) {
     return this.userService.switchRole(userId, dto.role);
@@ -57,7 +57,7 @@ export class UserController {
   @Post('phone')
   @ApiOperation({ summary: '绑定手机号' })
   async bindPhone(
-    @CurrentUser('id') userId: number,
+    @CurrentUser('id') userId: string,
     @Body('phone') phone: string,
   ) {
     return this.userService.bindPhone(userId, phone);
@@ -66,15 +66,15 @@ export class UserController {
   @Post('join-team')
   @ApiOperation({ summary: '选择所属团队' })
   async joinTeam(
-    @CurrentUser('id') userId: number,
+    @CurrentUser('id') userId: string,
     @Body() dto: JoinTeamDto,
   ) {
-    return this.userService.joinTeam(userId, dto.teamId);
+    return this.userService.joinTeam(userId, String(dto.teamId));
   }
 
   @Get('list')
   @ApiOperation({ summary: '获取用户列表（管理用）' })
-  @Roles(3) // 仅平台运营可访问
+  @Roles(3)
   async getUserList(
     @Query() pagination: PaginationDto,
     @Query('role') role?: string,

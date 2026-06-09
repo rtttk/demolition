@@ -7,7 +7,6 @@ import {
   Body,
   Param,
   Query,
-  ParseIntPipe,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '../../common/guards/auth.guard';
@@ -30,7 +29,7 @@ export class CompanyController {
   @Post('register')
   @Roles(2)
   async register(
-    @CurrentUser('id') userId: number,
+    @CurrentUser('id') userId: string,
     @Body() dto: RegisterCompanyDto,
   ) {
     return this.companyService.register(userId, dto);
@@ -42,7 +41,7 @@ export class CompanyController {
   @Put('profile')
   @Roles(2)
   async updateProfile(
-    @CurrentUser('id') userId: number,
+    @CurrentUser('id') userId: string,
     @Body() dto: UpdateCompanyDto,
   ) {
     return this.companyService.updateProfile(userId, dto);
@@ -53,7 +52,7 @@ export class CompanyController {
    */
   @Get('my')
   @Roles(2)
-  async getMyCompany(@CurrentUser('id') userId: number) {
+  async getMyCompany(@CurrentUser('id') userId: string) {
     return this.companyService.getMyCompany(userId);
   }
 
@@ -62,7 +61,7 @@ export class CompanyController {
    */
   @Public()
   @Get(':id')
-  async getCompanyById(@Param('id', ParseIntPipe) id: number) {
+  async getCompanyById(@Param('id') id: string) {
     return this.companyService.getCompanyById(id);
   }
 
@@ -72,9 +71,9 @@ export class CompanyController {
   @Post(':id/admin')
   @Roles(2)
   async addAdmin(
-    @CurrentUser('id') userId: number,
-    @Param('id', ParseIntPipe) companyId: number,
-    @Body('targetUserId', ParseIntPipe) targetUserId: number,
+    @CurrentUser('id') userId: string,
+    @Param('id') companyId: string,
+    @Body('targetUserId') targetUserId: string,
   ) {
     return this.companyService.addAdmin(userId, companyId, targetUserId);
   }
@@ -85,9 +84,9 @@ export class CompanyController {
   @Delete(':id/admin/:userId')
   @Roles(2)
   async removeAdmin(
-    @CurrentUser('id') userId: number,
-    @Param('id', ParseIntPipe) companyId: number,
-    @Param('userId', ParseIntPipe) targetUserId: number,
+    @CurrentUser('id') userId: string,
+    @Param('id') companyId: string,
+    @Param('userId') targetUserId: string,
   ) {
     return this.companyService.removeAdmin(userId, companyId, targetUserId);
   }

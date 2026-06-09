@@ -9,7 +9,7 @@ export class ComplianceService {
   /**
    * 合规文档列表（分页，可选分类筛选）
    */
-  async getList(pagination: PaginationDto; category?: string) {
+  async getList(pagination: PaginationDto, category?: string) {
     const where: any = { status: 1 };
 
     if (category) {
@@ -19,27 +19,28 @@ export class ComplianceService {
     const [list, total] = await Promise.all([
       this.prisma.complianceDoc.findMany({
         where,
-        skip: pagination.skip;
-        take: pagination.take;
+        skip: pagination.skip,
+        take: pagination.take,
         orderBy: { sortOrder: 'asc' },
       }),
       this.prisma.complianceDoc.count({ where }),
     ]);
 
-    return {list,
+    return {
+      list,
       total,
-      page: pagination.page;
-      pageSize: pagination.pageSize;
+      page: pagination.page,
+      pageSize: pagination.pageSize,
     };
   }
 
   /**
    * 合规文档详情
    */
-  async findById(id: number) {
+  async findById(id: string) {
     const doc = await this.prisma.complianceDoc.findUnique({
-      where: { id: String(id) },
-});
+      where: { id: id },
+    });
 
     if (!doc) {
       throw new NotFoundException('合规文档不存在');

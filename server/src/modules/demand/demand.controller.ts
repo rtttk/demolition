@@ -7,7 +7,6 @@ import {
   Param,
   Query,
   UseGuards,
-  ParseIntPipe,
 } from '@nestjs/common';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -31,7 +30,7 @@ export class DemandController {
   @Roles(1)
   @ApiOperation({ summary: '发布需求' })
   async create(
-    @CurrentUser('id') userId: number,
+    @CurrentUser('id') userId: string,
     @Body() dto: CreateDemandDto,
   ) {
     return this.demandService.create(userId, dto);
@@ -44,7 +43,7 @@ export class DemandController {
   @Roles(1)
   @ApiOperation({ summary: '我的需求列表' })
   async getMyDemands(
-    @CurrentUser('id') userId: number,
+    @CurrentUser('id') userId: string,
     @Query() pagination: PaginationDto,
     @Query('status') status?: number,
   ) {
@@ -80,8 +79,8 @@ export class DemandController {
   @Get(':id')
   @ApiOperation({ summary: '需求详情' })
   async findById(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser('id') userId?: number,
+    @Param('id') id: string,
+    @CurrentUser('id') userId?: string,
   ) {
     return this.demandService.findById(id, userId);
   }
@@ -93,8 +92,8 @@ export class DemandController {
   @Roles(1)
   @ApiOperation({ summary: '编辑需求' })
   async update(
-    @CurrentUser('id') userId: number,
-    @Param('id', ParseIntPipe) demandId: number,
+    @CurrentUser('id') userId: string,
+    @Param('id') demandId: string,
     @Body() dto: UpdateDemandDto,
   ) {
     return this.demandService.update(userId, demandId, dto);
@@ -107,8 +106,8 @@ export class DemandController {
   @Roles(1)
   @ApiOperation({ summary: '取消需求' })
   async cancel(
-    @CurrentUser('id') userId: number,
-    @Param('id', ParseIntPipe) demandId: number,
+    @CurrentUser('id') userId: string,
+    @Param('id') demandId: string,
   ) {
     return this.demandService.cancel(userId, demandId);
   }
@@ -119,7 +118,7 @@ export class DemandController {
   @Get(':id/quotes')
   @Roles(1)
   @ApiOperation({ summary: '需求的报价列表' })
-  async getDemandQuotes(@Param('id', ParseIntPipe) demandId: number) {
+  async getDemandQuotes(@Param('id') demandId: string) {
     return this.demandService.getDemandQuotes(demandId);
   }
 
@@ -130,9 +129,9 @@ export class DemandController {
   @Roles(1)
   @ApiOperation({ summary: '选择报价' })
   async selectQuotes(
-    @CurrentUser('id') userId: number,
-    @Param('id', ParseIntPipe) demandId: number,
-    @Body('quoteIds') quoteIds: number[],
+    @CurrentUser('id') userId: string,
+    @Param('id') demandId: string,
+    @Body('quoteIds') quoteIds: string[],
   ) {
     return this.demandService.selectQuotes(userId, demandId, quoteIds);
   }

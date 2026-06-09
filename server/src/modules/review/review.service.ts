@@ -9,25 +9,25 @@ import { PaginationDto } from '../../common/dto/pagination.dto';
 @Injectable()
 export class ReviewService {
   constructor(
-    private prisma: PrismaService;
-    private eventLog: EventLogService;
+    private prisma: PrismaService,
+    private eventLog: EventLogService,
   ) {}
 
   /**
    * 创建评价
    */
-  async create(userId: number; data: CreateReviewDto) {
+  async create(userId: string, data: CreateReviewDto) {
     // 1. 验证订单存在且属于用户
     const order = await this.prisma.order.findUnique({
       where: { id: String(data.orderId) },
-      select: { userId: true; teamId: true; status: true },
-});
+      select: { userId: true, teamId: true, status: true },
+    });
 
     if (!order) {
       throw new NotFoundException('订单不存在');
     }
 
-    if (Number(order.userId) !== userId) {
+    if (order.userId !== userId) {
       throw new ForbiddenException('您不是该订单的需求方');
     }
 
@@ -39,7 +39,7 @@ export class ReviewService {
     // 3. 验证未评价过
     const existingReview = await this.prisma.review.findUnique({
       where: { orderId: String(data.orderId) },
-});
+    });
 
     if (existingReview) {
       throw new BadRequestException('该订单已评价');
@@ -49,34 +49,19 @@ export class ReviewService {
     const review = await this.prisma.review.create({
       data: {
         orderId: String(data.orderId),
-        userId: String(userId),
+        userId: userId,
         teamId: String(data.teamId),
-        rating: data.rating;
-        content: data.content || null;
-        imageIds: data.imageIds ? data.imageIds as any : Prisma.JsonNull;
+        rating: data.rating,
+        content: data.content || null,
+        imageIds: data.imageIds ? data.imageIds as any : Prisma.JsonNull,
       },
-      include: {
-        user: {
-          select: {
-            id: true;
-            nickname: true;
-            avatarUrl: true;
-          },
-        },
-        team: {
-          select: {
-            id: true;
-            name: true;
-          },
-        },
-      },
-	});
+    });
 
     // 更新团队的avgRating（加权平均）
     const team = await this.prisma.team.findUnique({
       where: { id: String(data.teamId) },
-      select: { avgRating: true; reviewCount: true },
-});
+      select: { avgRating: true, reviewCount: true },
+    });
 
     const oldAvg = Number(team.avgRating);
     const oldCount = team.reviewCount;
@@ -86,18 +71,18 @@ export class ReviewService {
     await this.prisma.team.update({
       where: { id: String(data.teamId) },
       data: {
-        avgRating: newAvg;
-        reviewCount: newCount;
+        avgRating: newAvg,
+        reviewCount: newCount,
       },
-	});
+    });
 
     await this.eventLog.log({
-      bizType: 'review';
-      bizId: Number(review.id),
-      eventType: 'create';
-      operatorId: userId;
-      detail: { orderId: data.orderId; rating: data.rating },
-});
+      bizType: 'review',
+      bizId: review.id,
+      eventType: 'create',
+      operatorId: userId,
+      detail: { orderId: data.orderId, rating: data.rating },
+    });
 
     return review;
   }
@@ -105,32 +90,32 @@ export class ReviewService {
   /**
    * 评价列表（按团队ID）
    */
-  async getList(teamId: number; pagination: PaginationDto) {
+  async getList(teamId: string, pagination: PaginationDto) {
     const where: any = { teamId: String(teamId) };
 
     const [list, total] = await Promise.all([
       this.prisma.review.findMany({
         where,
-        skip: pagination.skip;
-        take: pagination.take;
+        skip: pagination.skip,
+        take: pagination.take,
         orderBy: { createdAt: 'desc' },
         include: {
           user: {
             select: {
-              id: true;
-              nickname: true;
-              avatarUrl: true;
+              id: true,
+              nickname: true,
+              avatarUrl: true,
             },
           },
         },
-      }),
+      } as any),
       this.prisma.review.count({ where }),
     ]);
 
     return {list,
       total,
-      page: pagination.page;
-      pageSize: pagination.pageSize;
+      page: pagination.page,
+      pageSize: pagination.pageSize,
     };
   }
 }

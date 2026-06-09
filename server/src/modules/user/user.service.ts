@@ -33,40 +33,33 @@ export class UserService {
   /**
    * 根据ID查找用户，不返回敏感字段（passwordHash, secretKey）
    */
-  async findById(id: number) {
+  async findById(id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: {
-        id: true;
-        openId: true;
-        unionId: true;
-        phone: true;
-        nickname: true;
-        avatarUrl: true;
-        roles: true;
-        currentRole: true;
-        realName: true;
-        gender: true;
-        age: true;
-        idCardNo: true;
-        idCardImages: true;
-        qualificationLevel: true;
-        workYears: true;
-        teamId: true;
-        isTeamAdmin: true;
-        status: true;
-        lastLoginAt: true;
-        createdAt: true;
-        updatedAt: true;
-        team: {
-          select: {
-            id: true;
-            name: true;
-            companyId: true;
-          },
-        },
+        id: true,
+        openId: true,
+        unionId: true,
+        phone: true,
+        nickname: true,
+        avatarUrl: true,
+        roles: true,
+        currentRole: true,
+        realName: true,
+        gender: true,
+        age: true,
+        idCardNo: true,
+        idCardImages: true,
+        qualificationLevel: true,
+        workYears: true,
+        teamId: true,
+        isTeamAdmin: true,
+        status: true,
+        lastLoginAt: true,
+        createdAt: true,
+        updatedAt: true,
       },
-	});
+    });
 
     if (!user) {
       throw new NotFoundException('用户不存在');
@@ -81,7 +74,7 @@ export class UserService {
   /**
    * 更新用户个人信息
    */
-  async updateProfile(id: number; data: UpdateProfileDto) {
+  async updateProfile(id: string, data: UpdateProfileDto) {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) {
       throw new NotFoundException('用户不存在');
@@ -103,34 +96,34 @@ export class UserService {
 
     return this.prisma.user.update({
       where: { id },
-      data: updateData;
+      data: updateData,
       select: {
-        id: true;
-        nickname: true;
-        realName: true;
-        gender: true;
-        age: true;
-        idCardNo: true;
-        idCardImages: true;
-        qualificationLevel: true;
-        workYears: true;
-        updatedAt: true;
+        id: true,
+        nickname: true,
+        realName: true,
+        gender: true,
+        age: true,
+        idCardNo: true,
+        idCardImages: true,
+        qualificationLevel: true,
+        workYears: true,
+        updatedAt: true,
       },
-	});
+    });
   }
 
   /**
    * 获取用户角色列表
    */
-  async getUserRoles(id: number) {
+  async getUserRoles(id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: {
-        id: true;
-        roles: true;
-        currentRole: true;
+        id: true,
+        roles: true,
+        currentRole: true,
       },
-	});
+    });
 
     if (!user) {
       throw new NotFoundException('用户不存在');
@@ -138,9 +131,9 @@ export class UserService {
 
     const roles = this.parseRoles(user.roles);
 
-    return {id: user.id;
+    return {id: user.id,
       roles,
-      currentRole: user.currentRole;
+      currentRole: user.currentRole,
       roleLabels: roles.map(r => ROLE_MAP[r] || '未知'),
     };
   }
@@ -149,7 +142,7 @@ export class UserService {
    * 切换当前角色（只允许在已分配的角色之间切换）
    * role: 1=需求方 2=服务方;
    */
-  async switchRole(id: number; role: number) {
+  async switchRole(id: string, role: number) {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) {
       throw new NotFoundException('用户不存在');
@@ -172,11 +165,11 @@ export class UserService {
     const updated = await this.prisma.user.update({
       where: { id },
       data: { currentRole: role },
-});
+    });
 
-    return {id: updated.id;
+    return {id: updated.id,
       roles: this.parseRoles(updated.roles),
-      currentRole: updated.currentRole;
+      currentRole: updated.currentRole,
     };
   }
 
@@ -184,7 +177,7 @@ export class UserService {
    * 分配用户角色（后台管理调用）
    * 需求方角色不可移除（所有用户必须拥有需求方角色）
    */
-  async assignRoles(id: number; roles: number[]) {
+  async assignRoles(id: string, roles: number[]) {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) {
       throw new NotFoundException('用户不存在');
@@ -205,22 +198,22 @@ export class UserService {
       where: { id },
       data: { roles: JSON.stringify(validRoles) },
       select: {
-        id: true;
-        roles: true;
-        currentRole: true;
+        id: true,
+        roles: true,
+        currentRole: true,
       },
-	});
+    });
 
-    return {id: updated.id;
+    return {id: updated.id,
       roles: this.parseRoles(updated.roles),
-      currentRole: updated.currentRole;
+      currentRole: updated.currentRole,
     };
   }
 
   /**
    * 绑定手机号
    */
-  async bindPhone(id: number; phone: string) {
+  async bindPhone(id: string, phone: string) {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) {
       throw new NotFoundException('用户不存在');
@@ -229,7 +222,7 @@ export class UserService {
     // 检查手机号是否已被其他用户绑定
     const existingUser = await this.prisma.user.findFirst({
       where: { phone, id: { not: id } },
-});
+    });
     if (existingUser) {
       throw new BadRequestException('该手机号已被其他用户绑定');
     }
@@ -238,16 +231,16 @@ export class UserService {
       where: { id },
       data: { phone },
       select: {
-        id: true;
-        phone: true;
+        id: true,
+        phone: true,
       },
-	});
+    });
   }
 
   /**
    * 员工选择所属团队
    */
-  async joinTeam(userId: number; teamId: number) {
+  async joinTeam(userId: string, teamId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('用户不存在');
@@ -256,7 +249,7 @@ export class UserService {
     // 验证团队存在且状态正常
     const team = await this.prisma.team.findUnique({
       where: { id: teamId },
-});
+    });
     if (!team) {
       throw new NotFoundException('团队不存在');
     }
@@ -268,23 +261,16 @@ export class UserService {
       where: { id: userId },
       data: { teamId },
       select: {
-        id: true;
-        teamId: true;
-        team: {
-          select: {
-            id: true;
-            name: true;
-            companyId: true;
-          },
-        },
+        id: true,
+        teamId: true,
       },
-	});
+    });
   }
 
   /**
    * 获取用户列表（管理用）
    */
-  async getUserList(pagination: PaginationDto; filters?: any) {
+  async getUserList(pagination: PaginationDto, filters?: any) {
     const where: any = {};
 
     // 按角色筛选（支持多个角色）
@@ -312,35 +298,29 @@ export class UserService {
 
     // 按团队ID筛选
     if (filters?.teamId !== undefined) {
-      where.teamId = Number(filters.teamId);
+      where.teamId = String(filters.teamId);
     }
 
     const [list, total] = await Promise.all([
       this.prisma.user.findMany({
         where,
-        skip: pagination.skip;
-        take: pagination.take;
+        skip: pagination.skip,
+        take: pagination.take,
         orderBy: { createdAt: 'desc' },
         select: {
-          id: true;
-          phone: true;
-          nickname: true;
-          avatarUrl: true;
-          roles: true;
-          currentRole: true;
-          realName: true;
-          gender: true;
-          teamId: true;
-          isTeamAdmin: true;
-          status: true;
-          lastLoginAt: true;
-          createdAt: true;
-          team: {
-            select: {
-              id: true;
-              name: true;
-            },
-          },
+          id: true,
+          phone: true,
+          nickname: true,
+          avatarUrl: true,
+          roles: true,
+          currentRole: true,
+          realName: true,
+          gender: true,
+          teamId: true,
+          isTeamAdmin: true,
+          status: true,
+          lastLoginAt: true,
+          createdAt: true,
         },
       }),
       this.prisma.user.count({ where }),
@@ -352,10 +332,10 @@ export class UserService {
       roles: this.parseRoles(item.roles),
     }));
 
-    return {list: transformedList;
+    return {list: transformedList,
       total,
-      page: pagination.page;
-      pageSize: pagination.pageSize;
+      page: pagination.page,
+      pageSize: pagination.pageSize,
     };
   }
 }

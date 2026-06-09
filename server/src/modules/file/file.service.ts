@@ -13,39 +13,39 @@ import OSS from 'ali-oss';
 
 // 文件类型枚举
 const FILE_TYPE = {
-  IMAGE: 1;
-  VIDEO: 2;
-  DOCUMENT: 3;
+  IMAGE: 1,
+  VIDEO: 2,
+  DOCUMENT: 3,
 } as const;
 
 // 允许的文件类型配置
-const ALLOWED_FILE_TYPES: Record<;
+const ALLOWED_FILE_TYPES: Record<
   number,
-  { mimeTypes: string[]; maxSize: number; extensions: string[] }>
-= {
+  { mimeTypes: string[]; maxSize: number; extensions: string[] }
+> = {
   [FILE_TYPE.IMAGE]: {
     mimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
-    maxSize: 5 * 1024 * 1024; // 5MB
+    maxSize: 5 * 1024 * 1024, // 5MB
     extensions: ['.jpg', '.jpeg', '.png', '.webp'],
   },
   [FILE_TYPE.VIDEO]: {
     mimeTypes: ['video/mp4'],
-    maxSize: 50 * 1024 * 1024; // 50MB
+    maxSize: 50 * 1024 * 1024, // 50MB
     extensions: ['.mp4'],
   },
   [FILE_TYPE.DOCUMENT]: {
-    mimeTypes: [,
+    mimeTypes: [
       'application/pdf',
       'application/msword',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     ],
-    maxSize: 10 * 1024 * 1024; // 10MB
+    maxSize: 10 * 1024 * 1024, // 10MB
     extensions: ['.pdf', '.doc', '.docx'],
   },
-});
+};
 
 // 文件类型名称映射
-const FILE_TYPE_NAMES: Record<number; string> = {
+const FILE_TYPE_NAMES: Record<number, string> = {
   [FILE_TYPE.IMAGE]: 'image',
   [FILE_TYPE.VIDEO]: 'video',
   [FILE_TYPE.DOCUMENT]: 'document',
@@ -54,15 +54,14 @@ const FILE_TYPE_NAMES: Record<number; string> = {
 @Injectable()
 export class FileService {
   private readonly logger = new Logger(FileService.name);
-  private ossClient: OSS;,
-  private readonly bucket: string;,
-  private readonly region: string;,
-  private readonly endpoint: string;,
-
+  private ossClient: OSS;
+  private readonly bucket: string;
+  private readonly region: string;
+  private readonly endpoint: string;
 
   constructor(
-    private prisma: PrismaService;
-    private configService: ConfigService;
+    private prisma: PrismaService,
+    private configService: ConfigService,
   ) {
     // 使用 ali-oss 创建客户端
     this.region = this.configService.get<string>('OSS_REGION') || 'oss-cn-shanghai';
@@ -71,14 +70,13 @@ export class FileService {
     this.bucket = this.configService.get<string>('OSS_BUCKET')!;
     this.endpoint = this.configService.get<string>('OSS_ENDPOINT')!;
 
-
     this.ossClient = new OSS({
-      region: this.region;
+      region: this.region,
       accessKeyId,
       accessKeySecret,
-      bucket: this.bucket;
-      endpoint: this.endpoint;
-    };
+      bucket: this.bucket,
+      endpoint: this.endpoint,
+    });
 
     this.logger.log(`OSS client initialized with region: ${this.region}, bucket: ${this.bucket}`);
   }
@@ -122,7 +120,7 @@ export class FileService {
    * 生成 OSS 上传路径
    * 格式: {fileType}/{year}/{month}/{timestamp}-{randomString}{ext}
    */
-private generateOssPath(fileType: number; originalName: string): string {
+  private generateOssPath(fileType: number, originalName: string): string {
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -169,14 +167,14 @@ private generateOssPath(fileType: number; originalName: string): string {
    * 上传单个文件到阿里云OSS并保存记录到数据库
    */
   async uploadFile(
-    file: any;
-    uploaderId: number;
+    file: any,
+    uploaderId: number,
   ): Promise<{
-    id: number;,
-    fileUrl: string;,
-    fileName: string;,
-    fileType: number;,
-    fileSize: number;,
+    id: number;
+    fileUrl: string;
+    fileName: string;
+    fileType: number;
+    fileSize: number;
   }> {
     // 验证文件
     const fileType = this.validateFile(file);
@@ -191,7 +189,7 @@ private generateOssPath(fileType: number; originalName: string): string {
         headers: {
           'Content-Type': file.mimetype,
         },
-	});
+      });
 
       // ali-oss put 返回的 result.url 可能是相对路径，需要构建完整 URL
       const fileUrl = result.url || this.buildFileUrl(ossPath);
@@ -200,23 +198,24 @@ private generateOssPath(fileType: number; originalName: string): string {
       const fileRecord = await this.prisma.file.create({
         data: {
           fileType,
-          fileName: file.originalname;
+          fileName: file.originalname,
           fileUrl,
-          fileSize: file.size;
-          mimeType: file.mimetype;
+          fileSize: file.size,
+          mimeType: file.mimetype,
           uploaderId,
         },
-	});
+      });
 
       this.logger.log(
         `File uploaded: ${file.originalname} -> ${ossPath}, id=${fileRecord.id}`,
       );
 
-      return {id: Number(fileRecord.id),
-        fileUrl: fileRecord.fileUrl;
-        fileName: fileRecord.fileName;
-        fileType: fileRecord.fileType;
-        fileSize: fileRecord.fileSize ?? file.size;
+      return {
+        id: Number(fileRecord.id),
+        fileUrl: fileRecord.fileUrl,
+        fileName: fileRecord.fileName,
+        fileType: fileRecord.fileType,
+        fileSize: fileRecord.fileSize ?? file.size,
       };
     } catch (error) {
       this.logger.error(
@@ -232,14 +231,14 @@ private generateOssPath(fileType: number; originalName: string): string {
    */
   async uploadFiles(
     files: any[],
-    uploaderId: number;
+    uploaderId: number,
   ): Promise<
     {
-      id: number;,
-      fileUrl: string;,
-      fileName: string;,
-      fileType: number;,
-      fileSize: number;,
+      id: number;
+      fileUrl: string;
+      fileName: string;
+      fileType: number;
+      fileSize: number;
     }[]
   > {
     if (!files || files.length === 0) {
@@ -259,24 +258,25 @@ private generateOssPath(fileType: number; originalName: string): string {
   async getFileInfo(fileId: number) {
     const fileRecord = await this.prisma.file.findUnique({
       where: { id: String(fileId) },
-});
+    });
 
     if (!fileRecord) {
       throw new NotFoundException(`文件不存在: id=${fileId}`);
     }
 
-    return {id: Number(fileRecord.id),
-      fileType: fileRecord.fileType;
-      fileName: fileRecord.fileName;
-      fileUrl: fileRecord.fileUrl;
-      fileSize: fileRecord.fileSize;
-      mimeType: fileRecord.mimeType;
-      width: fileRecord.width;
-      height: fileRecord.height;
-      duration: fileRecord.duration;
-      sortOrder: fileRecord.sortOrder;
-      uploaderId: fileRecord.uploaderId;
-      createdAt: fileRecord.createdAt;
+    return {
+      id: Number(fileRecord.id),
+      fileType: fileRecord.fileType,
+      fileName: fileRecord.fileName,
+      fileUrl: fileRecord.fileUrl,
+      fileSize: fileRecord.fileSize,
+      mimeType: fileRecord.mimeType,
+      width: fileRecord.width,
+      height: fileRecord.height,
+      duration: fileRecord.duration,
+      sortOrder: fileRecord.sortOrder,
+      uploaderId: fileRecord.uploaderId,
+      createdAt: fileRecord.createdAt,
     };
   }
 
@@ -293,31 +293,31 @@ private generateOssPath(fileType: number; originalName: string): string {
         id: { in: fileIds.map((id) => String(id)) },
       },
       orderBy: { createdAt: 'asc' },
-});
+    });
 
     return records.map((r) => ({
       id: Number(r.id),
-      fileType: r.fileType;
-      fileName: r.fileName;
-      fileUrl: r.fileUrl;
-      fileSize: r.fileSize;
-      mimeType: r.mimeType;
-      width: r.width;
-      height: r.height;
-      duration: r.duration;
-      sortOrder: r.sortOrder;
-      uploaderId: r.uploaderId;
-      createdAt: r.createdAt;
+      fileType: r.fileType,
+      fileName: r.fileName,
+      fileUrl: r.fileUrl,
+      fileSize: r.fileSize,
+      mimeType: r.mimeType,
+      width: r.width,
+      height: r.height,
+      duration: r.duration,
+      sortOrder: r.sortOrder,
+      uploaderId: r.uploaderId,
+      createdAt: r.createdAt,
     }));
   }
 
   /**
    * 删除文件（校验上传者权限）
    */
-  async deleteFile(fileId: number; userId: number) {
+  async deleteFile(fileId: number, userId: number) {
     const fileRecord = await this.prisma.file.findUnique({
       where: { id: String(fileId) },
-});
+    });
 
     if (!fileRecord) {
       throw new NotFoundException(`文件不存在: id=${fileId}`);
@@ -345,25 +345,25 @@ private generateOssPath(fileType: number; originalName: string): string {
     // 从数据库删除记录
     await this.prisma.file.delete({
       where: { id: String(fileId) },
-});
+    });
 
     this.logger.log(`File record deleted: id=${fileId}`);
 
-    return {message: '文件删除成功' };
+    return { message: '文件删除成功' };
   }
 
   /**
    * 生成 OSS 签名 URL（用于私有文件访问）
    */
-  async generateSignedUrl(fileUrl: string; expires: number = 3600): Promise<string> {
+  async generateSignedUrl(fileUrl: string, expires: number = 3600): Promise<string> {
     try {
       const objectPath = this.extractOssPath(fileUrl);
 
       // ali-oss 使用 signatureUrl 方法生成签名URL
       const signedUrl = this.ossClient.signatureUrl(objectPath, {
-        expires: expires;
-        method: 'GET';
-      };
+        expires: expires,
+        method: 'GET',
+      });
 
       return signedUrl;
     } catch (error) {

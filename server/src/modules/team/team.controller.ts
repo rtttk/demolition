@@ -7,7 +7,6 @@ import {
   Body,
   Param,
   Query,
-  ParseIntPipe,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '../../common/guards/auth.guard';
@@ -30,7 +29,7 @@ export class TeamController {
   @Post()
   @Roles(2)
   async create(
-    @CurrentUser('id') userId: number,
+    @CurrentUser('id') userId: string,
     @Body() dto: CreateTeamDto,
   ) {
     return this.teamService.create(userId, dto);
@@ -42,8 +41,8 @@ export class TeamController {
   @Put(':id')
   @Roles(2)
   async update(
-    @CurrentUser('id') userId: number,
-    @Param('id', ParseIntPipe) teamId: number,
+    @CurrentUser('id') userId: string,
+    @Param('id') teamId: string,
     @Body() dto: UpdateTeamDto,
   ) {
     return this.teamService.update(userId, teamId, dto);
@@ -55,8 +54,8 @@ export class TeamController {
   @Delete(':id')
   @Roles(2)
   async delete(
-    @CurrentUser('id') userId: number,
-    @Param('id', ParseIntPipe) teamId: number,
+    @CurrentUser('id') userId: string,
+    @Param('id') teamId: string,
   ) {
     return this.teamService.delete(userId, teamId);
   }
@@ -66,7 +65,7 @@ export class TeamController {
    */
   @Get('list')
   @Roles(2)
-  async getMyTeams(@CurrentUser('id') userId: number) {
+  async getMyTeams(@CurrentUser('id') userId: string) {
     return this.teamService.getMyTeams(userId);
   }
 
@@ -75,7 +74,7 @@ export class TeamController {
    */
   @Public()
   @Get(':id')
-  async getTeamById(@Param('id', ParseIntPipe) id: number) {
+  async getTeamById(@Param('id') id: string) {
     return this.teamService.getTeamById(id);
   }
 
@@ -85,7 +84,7 @@ export class TeamController {
   @Public()
   @Get(':id/cases')
   async getTeamCases(
-    @Param('id', ParseIntPipe) teamId: number,
+    @Param('id') teamId: string,
     @Query() pagination: PaginationDto,
   ) {
     return this.teamService.getTeamCases(teamId, pagination);
@@ -97,7 +96,7 @@ export class TeamController {
   @Public()
   @Get(':id/reviews')
   async getTeamReviews(
-    @Param('id', ParseIntPipe) teamId: number,
+    @Param('id') teamId: string,
     @Query() pagination: PaginationDto,
   ) {
     return this.teamService.getTeamReviews(teamId, pagination);

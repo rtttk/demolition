@@ -7,41 +7,41 @@ export class EventLogService {
   constructor(private prisma: PrismaService) {}
 
   async log(params: {
-    bizType: string;,
-    bizId: number;,
-    eventType: string;,
-    operatorId?: number;
-    detail?: any;
-    ip?: string;
+    bizType: string,
+    bizId: string,
+    eventType: string,
+    operatorId?: string,
+    detail?: any,
+    ip?: string,
   }) {
     return this.prisma.eventLog.create({
       data: {
-        bizType: params.bizType;
-        bizId: params.bizId;
-        eventType: params.eventType;
-        operatorId: params.operatorId;
+        bizType: params.bizType,
+        bizId: params.bizId,
+        eventType: params.eventType,
+        operatorId: params.operatorId,
         detail: params.detail ? JSON.stringify(params.detail) : Prisma.JsonNull,
-        ip: params.ip;
+        ip: params.ip,
       },
-	});
+    });
   }
 
-  async getByBiz(bizType: string; bizId: number) {
+  async getByBiz(bizType: string, bizId: string) {
     return this.prisma.eventLog.findMany({
       where: { bizType, bizId },
       orderBy: { createdAt: 'desc' },
-});
+    });
   }
 
-  async getStats(startTime: Date; endTime: Date) {
+  async getStats(startTime: Date, endTime: Date) {
     // 按bizType和eventType分组统计
     const stats = await this.prisma.eventLog.groupBy({
       by: ['bizType', 'eventType'],
       where: {
-        createdAt: { gte: startTime; lte: endTime },
+        createdAt: { gte: startTime, lte: endTime },
       },
-      _count: true;
-    };
+      _count: true,
+    });
     return stats;
   }
 }

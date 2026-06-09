@@ -7,7 +7,6 @@ import {
   Param,
   Query,
   UseGuards,
-  ParseIntPipe,
 } from '@nestjs/common';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -28,7 +27,7 @@ export class MessageController {
   @Post()
   @ApiOperation({ summary: '发送消息' })
   async send(
-    @CurrentUser('id') userId: number,
+    @CurrentUser('id') userId: string,
     @Body() dto: SendMessageDto,
   ) {
     return this.messageService.send(userId, dto);
@@ -40,7 +39,7 @@ export class MessageController {
   @Get()
   @ApiOperation({ summary: '消息列表' })
   async getList(
-    @CurrentUser('id') userId: number,
+    @CurrentUser('id') userId: string,
     @Query() pagination: PaginationDto,
     @Query('type') type?: string,
   ) {
@@ -52,7 +51,7 @@ export class MessageController {
    */
   @Get('unread-count')
   @ApiOperation({ summary: '未读消息数' })
-  async getUnreadCount(@CurrentUser('id') userId: number) {
+  async getUnreadCount(@CurrentUser('id') userId: string) {
     return this.messageService.getUnreadCount(userId);
   }
 
@@ -61,7 +60,7 @@ export class MessageController {
    */
   @Put(':id/read')
   @ApiOperation({ summary: '标记消息已读' })
-  async markRead(@Param('id', ParseIntPipe) id: number) {
+  async markRead(@Param('id') id: string) {
     return this.messageService.markRead(id);
   }
 
@@ -70,7 +69,7 @@ export class MessageController {
    */
   @Put('read-all')
   @ApiOperation({ summary: '全部标记已读' })
-  async markAllRead(@CurrentUser('id') userId: number) {
+  async markAllRead(@CurrentUser('id') userId: string) {
     return this.messageService.markAllRead(userId);
   }
 }

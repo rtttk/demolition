@@ -10,9 +10,8 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateTeamDto {
   @ApiProperty({ description: '公司ID' })
-  @Type(() => Number)
-  @IsInt()
-  companyId: number;
+  @IsString()
+  companyId: string;
 
   @ApiProperty({ description: '团队名称' })
   @IsString()

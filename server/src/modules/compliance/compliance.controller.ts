@@ -4,7 +4,6 @@ import {
   Param,
   Query,
   UseGuards,
-  ParseIntPipe,
 } from '@nestjs/common';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { Public } from '../../common/decorators/public.decorator';
@@ -37,7 +36,7 @@ export class ComplianceController {
   @Get(':id')
   @Public()
   @ApiOperation({ summary: '合规文档详情' })
-  async findById(@Param('id', ParseIntPipe) id: number) {
+  async findById(@Param('id') id: string) {
     return this.complianceService.findById(id);
   }
 }
