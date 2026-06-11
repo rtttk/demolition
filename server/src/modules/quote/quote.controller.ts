@@ -22,6 +22,19 @@ export class QuoteController {
   constructor(private readonly quoteService: QuoteService) {}
 
   /**
+   * 检查是否已对某需求报价（服务方）
+   */
+  @Get('check')
+  @Roles(2)
+  @ApiOperation({ summary: '检查是否已报价' })
+  async checkQuote(
+    @CurrentUser('id') userId: string,
+    @Query('demandId') demandId: string,
+  ) {
+    return this.quoteService.checkQuote(userId, demandId);
+  }
+
+  /**
    * 提交报价（服务方）
    */
   @Post()

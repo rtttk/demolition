@@ -42,9 +42,9 @@ export class AdminController {
     @Query('phone') phone?: string,
   ) {
     const filters: any = {};
-    if (role !== undefined) filters.role = role;
-    if (status !== undefined) filters.status = status;
-    if (phone) filters.phone = phone;
+    if (role !== undefined && role !== '' && role !== null) filters.role = role;
+    if (status !== undefined && status !== '' && status !== null) filters.status = status;
+    if (phone && phone.trim() !== '') filters.phone = phone;
 
     return this.adminService.getUserList(pagination, filters);
   }
@@ -80,9 +80,10 @@ export class AdminController {
     @Query('status') status?: string,
   ) {
     const filters: any = {};
-    if (name) filters.name = name;
-    if (verifyStatus !== undefined) filters.verifyStatus = verifyStatus;
-    if (status !== undefined) filters.status = status;
+    if (name && name.trim() !== '') filters.name = name;
+    if (verifyStatus !== undefined && verifyStatus !== '' && verifyStatus !== null)
+      filters.verifyStatus = verifyStatus;
+    if (status !== undefined && status !== '' && status !== null) filters.status = status;
 
     return this.adminService.getCompanyList(pagination, filters);
   }
@@ -121,9 +122,9 @@ export class AdminController {
     @Query('status') status?: string,
   ) {
     const filters: any = {};
-    if (companyId !== undefined) filters.companyId = companyId;
-    if (name) filters.name = name;
-    if (status !== undefined) filters.status = status;
+    if (companyId && companyId.trim() !== '') filters.companyId = companyId;
+    if (name && name.trim() !== '') filters.name = name;
+    if (status !== undefined && status !== '' && status !== null) filters.status = status;
 
     return this.adminService.getTeamList(pagination, filters);
   }

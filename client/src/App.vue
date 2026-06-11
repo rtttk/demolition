@@ -1,6 +1,7 @@
 <script>
 import { useUserStore } from '@/store/modules/user'
 import { getSessionToken } from '@/utils/auth'
+import { getCurrentRole } from '@/utils/auth'
 
 export default {
   onLaunch() {
@@ -15,11 +16,13 @@ export default {
       uni.reLaunch({ url: '/pages/login/index' })
     } else {
       // 已注册用户：初始化 Pinia store，从本地存储恢复用户信息
-      // - userStore.token / sessionToken 在 store 初始化时自动从 storage 读取
-      // - userStore.userInfo 同上
-      // - 后续请求带上 sessionToken，由后端 AuthGuard 验证有效性
-      // - 若后端返回 401，request 拦截器会清除登录状态并跳转登录页
-      useUserStore()
+      const userStore = useUserStore()
+      
+      // 检查当前角色，如果是服务方角色，跳转到服务方大厅
+      const currentRole = getCurrentRole()
+      if (currentRole === 2) {
+        uni.reLaunch({ url: '/provider/hall/index' })
+      }
     }
     // #endif
   },

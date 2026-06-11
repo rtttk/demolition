@@ -149,6 +149,14 @@ export function showError(title = '操作失败') {
 }
 
 /**
+ * 显示Toast提示
+ * @param {string} title
+ */
+export function showToast(title) {
+  uni.showToast({ title, icon: 'none' })
+}
+
+/**
  * 显示确认弹窗
  * @param {string} content
  * @param {string} title

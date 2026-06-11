@@ -26,23 +26,19 @@ export class MessageService {
         content: data.content || null,
         imageIds: data.imageIds ? data.imageIds as any : Prisma.JsonNull,
       },
-      include: {
-        sender: {
-          select: {
-            id: true,
-            nickname: true,
-            avatarUrl: true,
-          },
-        },
-        receiver: {
-          select: {
-            id: true,
-            nickname: true,
-            avatarUrl: true,
-          },
-        },
-      },
-    } as any);
+    });
+
+    // 查询发送者和接收者信息
+    const [sender, receiver] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, nickname: true, avatarUrl: true },
+      }),
+      this.prisma.user.findUnique({
+        where: { id: String(data.receiverId) },
+        select: { id: true, nickname: true, avatarUrl: true },
+      }),
+    ]);
 
     await this.eventLog.log({
       bizType: 'message',
@@ -52,7 +48,7 @@ export class MessageService {
       detail: { receiverId: data.receiverId },
     });
 
-    return message;
+    return { ...message, sender, receiver };
   }
 
   /**
@@ -72,28 +68,27 @@ export class MessageService {
         skip: pagination.skip,
         take: pagination.take,
         orderBy: { createdAt: 'desc' },
-        include: {
-          sender: {
-            select: {
-              id: true,
-              nickname: true,
-              avatarUrl: true,
-            },
-          },
-          receiver: {
-            select: {
-              id: true,
-              nickname: true,
-              avatarUrl: true,
-            },
-          },
-        },
-      } as any),
+      }),
       this.prisma.message.count({ where }),
     ]);
 
+    // 收集所有需要查询的用户ID
+    const userIds = [...new Set(list.flatMap(m => [m.senderId, m.receiverId]))];
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, nickname: true, avatarUrl: true },
+    });
+    const userMap = new Map(users.map(u => [u.id, u]));
+
+    // 合并消息和用户信息
+    const listWithUsers = list.map(m => ({
+      ...m,
+      sender: userMap.get(m.senderId) || null,
+      receiver: userMap.get(m.receiverId) || null,
+    }));
+
     return {
-      list,
+      list: listWithUsers,
       total,
       page: pagination.page,
       pageSize: pagination.pageSize,

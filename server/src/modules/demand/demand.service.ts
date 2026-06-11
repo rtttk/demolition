@@ -44,17 +44,18 @@ export class DemandService {
         status: 0, // 待抢单
         expiredAt,
       },
-      include: {
-        user: {
-          select: {
-            id: true,
-            nickname: true,
-            avatarUrl: true,
-            phone: true,
-          },
-        },
+    });
+
+    // 查询用户信息
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        nickname: true,
+        avatarUrl: true,
+        phone: true,
       },
-    } as any);
+    });
 
     await this.eventLog.log({
       bizType: 'demand',
@@ -64,7 +65,7 @@ export class DemandService {
       detail: { demandNo, title: data.title },
     });
 
-    return demand;
+    return { ...demand, user };
   }
 
   /**
@@ -73,40 +74,7 @@ export class DemandService {
   async findById(id: string, userId?: string) {
     const demand = await this.prisma.demand.findUnique({
       where: { id },
-      include: {
-        user: {
-          select: {
-            id: true,
-            nickname: true,
-            avatarUrl: true,
-            phone: true,
-          },
-        },
-        quotes: {
-          select: {
-            id: true,
-            quoteNo: true,
-            price: true,
-            duration: true,
-            planSummary: true,
-            status: true,
-            createdAt: true,
-            team: {
-              select: {
-                id: true,
-                name: true,
-                company: {
-                  select: {
-                    id: true,
-                    name: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    } as any);
+    });
 
     if (!demand) {
       throw new NotFoundException('需求不存在');
@@ -118,7 +86,54 @@ export class DemandService {
       data: { viewCount: { increment: 1 } },
     });
 
-    return demand;
+    // 查询用户信息和报价列表
+    const [user, quotes] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: demand.userId },
+        select: { id: true, nickname: true, avatarUrl: true, phone: true },
+      }),
+      this.prisma.quote.findMany({
+        where: { demandId: id },
+        select: {
+          id: true,
+          quoteNo: true,
+          price: true,
+          duration: true,
+          planSummary: true,
+          status: true,
+          createdAt: true,
+          teamId: true,
+        },
+      }),
+    ]);
+
+    // 查询团队信息
+    const teamIds = [...new Set(quotes.map(q => q.teamId))];
+    const teams = await this.prisma.team.findMany({
+      where: { id: { in: teamIds } },
+      select: { id: true, name: true, companyId: true },
+    });
+    const teamMap = new Map(teams.map(t => [t.id, t]));
+
+    // 查询公司信息
+    const companyIds = [...new Set(teams.map(t => t.companyId))];
+    const companies = await this.prisma.company.findMany({
+      where: { id: { in: companyIds } },
+      select: { id: true, name: true },
+    });
+    const companyMap = new Map(companies.map(c => [c.id, c]));
+
+    // 合并报价、团队、公司信息
+    const quotesWithTeam = quotes.map(q => {
+      const team = teamMap.get(q.teamId);
+      const company = team ? companyMap.get(team.companyId) : null;
+      return {
+        ...q,
+        team: team ? { id: team.id, name: team.name, company: company ? { id: company.id, name: company.name } : null } : null,
+      };
+    });
+
+    return { ...demand, user, quotes: quotesWithTeam };
   }
 
   /**
@@ -136,21 +151,25 @@ export class DemandService {
         skip: pagination.skip,
         take: pagination.take,
         orderBy: { createdAt: 'desc' },
-        include: {
-          user: {
-            select: {
-              id: true,
-              nickname: true,
-              avatarUrl: true,
-            },
-          } as any,
-        },
-      } as any),
+      }),
       this.prisma.demand.count({ where }),
     ]);
 
+    // 查询用户信息
+    const userIds = [...new Set(list.map(d => d.userId))];
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, nickname: true, avatarUrl: true },
+    });
+    const userMap = new Map(users.map(u => [u.id, u]));
+
+    const listWithUsers = list.map(d => ({
+      ...d,
+      user: userMap.get(d.userId) || null,
+    }));
+
     return {
-      list,
+      list: listWithUsers,
       total,
       page: pagination.page,
       pageSize: pagination.pageSize,
@@ -196,16 +215,12 @@ export class DemandService {
     const updated = await this.prisma.demand.update({
       where: { id: demandId },
       data: updateData,
-      include: {
-        user: {
-          select: {
-            id: true,
-            nickname: true,
-            avatarUrl: true,
-          },
-        },
-      },
-    } as any);
+    });
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, nickname: true, avatarUrl: true },
+    });
 
     await this.eventLog.log({
       bizType: 'demand',
@@ -215,7 +230,7 @@ export class DemandService {
       detail: { changes: data },
     });
 
-    return updated;
+    return { ...updated, user };
   }
 
   /**
@@ -241,16 +256,12 @@ export class DemandService {
     const updated = await this.prisma.demand.update({
       where: { id: demandId },
       data: { status: -1 }, // -1 = 已取消
-      include: {
-        user: {
-          select: {
-            id: true,
-            nickname: true,
-            avatarUrl: true,
-          },
-        },
-      },
-    } as any);
+    });
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, nickname: true, avatarUrl: true },
+    });
 
     await this.eventLog.log({
       bizType: 'demand',
@@ -259,7 +270,7 @@ export class DemandService {
       operatorId: userId,
     });
 
-    return updated;
+    return { ...updated, user };
   }
 
   /**
@@ -293,21 +304,25 @@ export class DemandService {
         skip: pagination.skip,
         take: pagination.take,
         orderBy: { createdAt: 'desc' },
-        include: {
-          user: {
-            select: {
-              id: true,
-              nickname: true,
-              avatarUrl: true,
-            },
-          } as any,
-        },
-      } as any),
+      }),
       this.prisma.demand.count({ where }),
     ]);
 
+    // 查询用户信息
+    const userIds = [...new Set(list.map(d => d.userId))];
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, nickname: true, avatarUrl: true },
+    });
+    const userMap = new Map(users.map(u => [u.id, u]));
+
+    const listWithUsers = list.map(d => ({
+      ...d,
+      user: userMap.get(d.userId) || null,
+    }));
+
     return {
-      list,
+      list: listWithUsers,
       total,
       page: pagination.page,
       pageSize: pagination.pageSize,
@@ -349,16 +364,12 @@ export class DemandService {
         selectedQuoteIds: quoteIds as any,
         status: 5, // 已选团队
       },
-      include: {
-        user: {
-          select: {
-            id: true,
-            nickname: true,
-            avatarUrl: true,
-          },
-        },
-      },
-    } as any);
+    });
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, nickname: true, avatarUrl: true },
+    });
 
     await this.eventLog.log({
       bizType: 'demand',
@@ -368,7 +379,7 @@ export class DemandService {
       detail: { quoteIds },
     });
 
-    return updated;
+    return { ...updated, user };
   }
 
   /**

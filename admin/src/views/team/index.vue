@@ -27,8 +27,12 @@
       <el-table :data="tableData" v-loading="loading" stripe border>
         <el-table-column prop="id" label="ID" width="70" align="center" />
         <el-table-column prop="name" label="团队名称" min-width="140" />
-        <el-table-column prop="companyName" label="所属企业" min-width="140" />
-        <el-table-column prop="leaderName" label="负责人" width="100" />
+        <el-table-column prop="companyName" label="所属企业" min-width="140">
+          <template #default="{ row }">
+            {{ row.companyName || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="leaderAName" label="负责人" width="100" />
         <el-table-column prop="teamSize" label="团队人数" width="90" align="center" />
         <el-table-column prop="specialties" label="擅长类型" min-width="140" show-overflow-tooltip />
         <el-table-column prop="status" label="状态" width="100" align="center">

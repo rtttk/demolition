@@ -139,12 +139,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onShow } from 'vue'
+import { ref, computed } from 'vue'
 import { onShow as onPageShow } from '@dcloudio/uni-app'
 import { getStatusBarHeight } from '@/utils/util'
 import { useUserStore } from '@/store/modules/user'
 import { useAppStore } from '@/store/modules/app'
 import { ROLE_LIST } from '@/utils/constants'
+import { getUserStats } from '@/api/user'
 
 const userStore = useUserStore()
 const appStore = useAppStore()
@@ -171,6 +172,21 @@ const stats = ref({
   orderCount: 0,
   reviewCount: 0
 })
+
+/**
+ * 加载统计数据
+ */
+async function loadStats() {
+  try {
+    const res = await getUserStats()
+    const data = res.data || res
+    stats.value.demandCount = data.demandCount || 0
+    stats.value.orderCount = data.orderCount || 0
+    stats.value.reviewCount = data.reviewCount || 0
+  } catch (error) {
+    console.error('获取统计数据失败:', error)
+  }
+}
 
 /**
  * 点击用户区域
@@ -257,6 +273,7 @@ onPageShow(() => {
   // 刷新用户信息以获取最新角色
   if (userStore.isLoggedIn) {
     userStore.fetchUserInfo()
+    loadStats()
   }
 })
 </script>

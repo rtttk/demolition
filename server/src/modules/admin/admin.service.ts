@@ -15,9 +15,6 @@ export class AdminService {
   async getUserList(pagination: PaginationDto, filters?: any) {
     const where: any = {};
 
-    if (filters?.role !== undefined) {
-      where.role = Number(filters.role);
-    }
     if (filters?.status !== undefined) {
       where.status = Number(filters.status);
     }
@@ -50,14 +47,34 @@ export class AdminService {
       this.prisma.user.count({ where }),
     ]);
 
-    const transformedList = list.map(item => ({
-      ...item,
-      roles: this.parseRoles(item.roles),
-    }));
+    const teamIds = list.map((u) => u.teamId).filter((v): v is string => !!v);
+    const teamsMap = new Map<string, any>();
+    if (teamIds.length > 0) {
+      const teams = await this.prisma.team.findMany({
+        where: { id: { in: teamIds } },
+        select: { id: true, name: true, companyId: true },
+      });
+      teams.forEach((t) => teamsMap.set(t.id, t));
+    }
+
+    const transformedList = list.map((item) => {
+      const parsedRoles = this.parseRoles(item.roles);
+      return {
+        ...item,
+        roles: parsedRoles,
+        role: parsedRoles,
+        team: item.teamId ? teamsMap.get(item.teamId) || null : null,
+      };
+    });
+
+    const filtered =
+      filters?.role !== undefined
+        ? transformedList.filter((u) => u.roles.includes(Number(filters.role)))
+        : transformedList;
 
     return {
-      list: transformedList,
-      total,
+      list: filtered,
+      total: filtered.length,
       page: pagination.page,
       pageSize: pagination.pageSize,
     };
@@ -170,19 +187,86 @@ export class AdminService {
         skip: pagination.skip,
         take: pagination.take,
         orderBy: { createdAt: 'desc' },
-        include: {
-          admins: {
-            include: {
-              user: {
-                select: { id: true, nickname: true, phone: true },
-              },
-            },
-          },
-          _count: { select: { teams: true, cases: true } },
+        select: {
+          id: true,
+          name: true,
+          contactPerson: true,
+          contactPhone: true,
+          licenseNo: true,
+          licenseImages: true,
+          qualification: true,
+          qualificationImages: true,
+          safetyCertNo: true,
+          safetyCertImages: true,
+          establishedAt: true,
+          description: true,
+          serviceArea: true,
+          completedCount: true,
+          teamCount: true,
+          verifyStatus: true,
+          verifyRemark: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
         },
-      } as any),
+      }),
       this.prisma.company.count({ where }),
     ]);
+
+    const companyIds = list.map((c) => c.id);
+    if (companyIds.length > 0) {
+      const [teams, admins] = await Promise.all([
+        this.prisma.team.findMany({
+          where: { companyId: { in: companyIds } },
+          select: { id: true, companyId: true, name: true },
+        }),
+        this.prisma.companyAdmin.findMany({
+          where: { companyId: { in: companyIds } },
+          select: {
+            id: true,
+            companyId: true,
+            userId: true,
+            role: true,
+            createdAt: true,
+          },
+        }),
+      ]);
+
+      const adminUserIds = admins.map((a) => a.userId).filter(Boolean);
+      let usersMap = new Map<string, any>();
+      if (adminUserIds.length > 0) {
+        const users = await this.prisma.user.findMany({
+          where: { id: { in: adminUserIds } },
+          select: { id: true, nickname: true, phone: true },
+        });
+        users.forEach((u) => usersMap.set(u.id, u));
+      }
+
+      const teamsByCompany = new Map<string, any[]>();
+      teams.forEach((t) => {
+        const arr = teamsByCompany.get(t.companyId) || [];
+        arr.push(t);
+        teamsByCompany.set(t.companyId, arr);
+      });
+
+      const adminsByCompany = new Map<string, any[]>();
+      admins.forEach((a) => {
+        const arr = adminsByCompany.get(a.companyId) || [];
+        arr.push({ ...a, user: usersMap.get(a.userId) });
+        adminsByCompany.set(a.companyId, arr);
+      });
+
+      return {
+        list: list.map((item) => ({
+          ...this.transformCompany(item),
+          admins: adminsByCompany.get(item.id) || [],
+          teamCount: (teamsByCompany.get(item.id) || []).length,
+        })),
+        total,
+        page: pagination.page,
+        pageSize: pagination.pageSize,
+      };
+    }
 
     return {
       list: list.map((item) => this.transformCompany(item)),
@@ -238,10 +322,26 @@ export class AdminService {
         skip: pagination.skip,
         take: pagination.take,
         orderBy: { createdAt: 'desc' },
-        include: {
-          _count: { select: { members: true, quotes: true, orders: true, cases: true } },
+        select: {
+          id: true,
+          companyId: true,
+          name: true,
+          leaderAName: true,
+          leaderAPhone: true,
+          leaderBName: true,
+          leaderBPhone: true,
+          teamSize: true,
+          specialties: true,
+          description: true,
+          serviceArea: true,
+          completedCount: true,
+          avgRating: true,
+          reviewCount: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
         },
-      } as any),
+      }),
       this.prisma.team.count({ where: { companyId } }),
     ]);
 
@@ -274,18 +374,48 @@ export class AdminService {
         skip: pagination.skip,
         take: pagination.take,
         orderBy: { createdAt: 'desc' },
-        include: {
-          company: {
-            select: { id: true, name: true },
-          },
-          _count: { select: { members: true, quotes: true, orders: true, cases: true } },
+        select: {
+          id: true,
+          companyId: true,
+          name: true,
+          leaderAName: true,
+          leaderAPhone: true,
+          leaderBName: true,
+          leaderBPhone: true,
+          teamSize: true,
+          specialties: true,
+          description: true,
+          serviceArea: true,
+          completedCount: true,
+          avgRating: true,
+          reviewCount: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
         },
-      } as any),
+      }),
       this.prisma.team.count({ where }),
     ]);
 
+    const companyIds = list.map((t) => t.companyId).filter(Boolean);
+    const companyMap = new Map<string, any>();
+    if (companyIds.length > 0) {
+      const companies = await this.prisma.company.findMany({
+        where: { id: { in: companyIds } },
+        select: { id: true, name: true },
+      });
+      companies.forEach((c) => companyMap.set(c.id, c));
+    }
+
     return {
-      list: list.map((item) => this.transformTeam(item)),
+      list: list.map((item) => {
+        const transformed = this.transformTeam(item);
+        return {
+          ...transformed,
+          company: companyMap.get(item.companyId) || null,
+          companyName: companyMap.get(item.companyId)?.name || null,
+        };
+      }),
       total,
       page: pagination.page,
       pageSize: pagination.pageSize,
@@ -303,10 +433,26 @@ export class AdminService {
     const updated = await this.prisma.team.update({
       where: { id: teamId },
       data: { status },
-      include: {
-        company: { select: { id: true, name: true } },
+      select: {
+        id: true,
+        companyId: true,
+        name: true,
+        leaderAName: true,
+        leaderAPhone: true,
+        teamSize: true,
+        status: true,
+        updatedAt: true,
       },
-    } as any);
+    });
+
+    let companyInfo = null;
+    if (updated.companyId) {
+      const company = await this.prisma.company.findUnique({
+        where: { id: updated.companyId },
+        select: { id: true, name: true },
+      });
+      companyInfo = company;
+    }
 
     await this.eventLog.log({
       bizType: 'team',
@@ -316,7 +462,12 @@ export class AdminService {
       detail: { teamId, oldStatus: team.status, newStatus: status },
     });
 
-    return this.transformTeam(updated);
+    const transformed = this.transformTeam(updated);
+    return {
+      ...transformed,
+      company: companyInfo,
+      companyName: companyInfo?.name || null,
+    };
   }
 
   // ==================== 需求管理 ====================
@@ -340,18 +491,46 @@ export class AdminService {
         skip: pagination.skip,
         take: pagination.take,
         orderBy: { createdAt: 'desc' },
-        include: {
-          user: {
-            select: { id: true, nickname: true, phone: true },
-          },
-          _count: { select: { quotes: true } },
+        select: {
+          id: true,
+          demandNo: true,
+          userId: true,
+          demoType: true,
+          title: true,
+          description: true,
+          address: true,
+          district: true,
+          longitude: true,
+          latitude: true,
+          area: true,
+          floor: true,
+          expectedTime: true,
+          imageIds: true,
+          status: true,
+          selectedQuoteIds: true,
+          quoteCount: true,
+          viewCount: true,
+          expiredAt: true,
+          completedAt: true,
+          createdAt: true,
+          updatedAt: true,
         },
-      } as any),
+      }),
       this.prisma.demand.count({ where }),
     ]);
 
+    const userIds = list.map((d) => d.userId).filter(Boolean);
+    const userMap = new Map<string, any>();
+    if (userIds.length > 0) {
+      const users = await this.prisma.user.findMany({
+        where: { id: { in: userIds } },
+        select: { id: true, nickname: true, phone: true },
+      });
+      users.forEach((u) => userMap.set(u.id, u));
+    }
+
     return {
-      list: list.map((item) => this.transformDemand(item)),
+      list: list.map((item) => this.transformDemand({ ...item, user: userMap.get(item.userId) || null })),
       total,
       page: pagination.page,
       pageSize: pagination.pageSize,
@@ -369,12 +548,28 @@ export class AdminService {
     const updated = await this.prisma.demand.update({
       where: { id: demandId },
       data: { status },
-      include: {
-        user: {
-          select: { id: true, nickname: true, phone: true },
-        },
+      select: {
+        id: true,
+        demandNo: true,
+        userId: true,
+        demoType: true,
+        title: true,
+        status: true,
+        quoteCount: true,
+        viewCount: true,
+        createdAt: true,
+        updatedAt: true,
       },
-    } as any);
+    });
+
+    let userInfo = null;
+    if (updated.userId) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: updated.userId },
+        select: { id: true, nickname: true, phone: true },
+      });
+      userInfo = user;
+    }
 
     await this.eventLog.log({
       bizType: 'demand',
@@ -384,7 +579,7 @@ export class AdminService {
       detail: { demandId, oldStatus: demand.status, newStatus: status },
     });
 
-    return this.transformDemand(updated);
+    return this.transformDemand({ ...updated, user: userInfo });
   }
 
   // ==================== 报价管理 ====================
@@ -408,23 +603,68 @@ export class AdminService {
         skip: pagination.skip,
         take: pagination.take,
         orderBy: { createdAt: 'desc' },
-        include: {
-          demand: {
-            select: { id: true, demandNo: true, title: true },
-          },
-          team: {
-            select: { id: true, name: true },
-          },
-          company: {
-            select: { id: true, name: true },
-          },
+        select: {
+          id: true,
+          quoteNo: true,
+          demandId: true,
+          teamId: true,
+          companyId: true,
+          price: true,
+          duration: true,
+          planSummary: true,
+          remark: true,
+          status: true,
+          reviewRemark: true,
+          reviewedAt: true,
+          reviewedBy: true,
+          createdAt: true,
+          updatedAt: true,
         },
-      } as any),
+      }),
       this.prisma.quote.count({ where }),
     ]);
 
+    const demandIds = list.map((q) => q.demandId).filter(Boolean);
+    const teamIds = list.map((q) => q.teamId).filter(Boolean);
+    const companyIds = list.map((q) => q.companyId).filter(Boolean);
+
+    const [demands, teams, companies] = await Promise.all([
+      demandIds.length > 0
+        ? this.prisma.demand.findMany({
+            where: { id: { in: demandIds } },
+            select: { id: true, demandNo: true, title: true },
+          })
+        : [],
+      teamIds.length > 0
+        ? this.prisma.team.findMany({
+            where: { id: { in: teamIds } },
+            select: { id: true, name: true },
+          })
+        : [],
+      companyIds.length > 0
+        ? this.prisma.company.findMany({
+            where: { id: { in: companyIds } },
+            select: { id: true, name: true },
+          })
+        : [],
+    ]);
+
+    const demandMap = new Map<string, any>();
+    demands.forEach((d) => demandMap.set(d.id, d));
+    const teamMap = new Map<string, any>();
+    teams.forEach((t) => teamMap.set(t.id, t));
+    const companyMap = new Map<string, any>();
+    companies.forEach((c) => companyMap.set(c.id, c));
+
     return {
-      list: list.map((item) => this.transformQuote(item)),
+      list: list.map((item) =>
+        this.transformQuote({
+          ...item,
+          demand: demandMap.get(item.demandId) || null,
+          team: teamMap.get(item.teamId) || null,
+          company: companyMap.get(item.companyId) || null,
+        }),
+      ),
       total,
       page: pagination.page,
       pageSize: pagination.pageSize,
@@ -454,18 +694,45 @@ export class AdminService {
         reviewedAt: new Date(),
         reviewedBy: reviewerId || null,
       },
-      include: {
-        demand: {
-          select: { id: true, demandNo: true, title: true },
-        },
-        team: {
-          select: { id: true, name: true },
-        },
-        company: {
-          select: { id: true, name: true },
-        },
+      select: {
+        id: true,
+        quoteNo: true,
+        demandId: true,
+        teamId: true,
+        companyId: true,
+        price: true,
+        duration: true,
+        planSummary: true,
+        remark: true,
+        status: true,
+        reviewRemark: true,
+        reviewedAt: true,
+        reviewedBy: true,
+        createdAt: true,
+        updatedAt: true,
       },
-    } as any);
+    });
+
+    const [demand, team, company] = await Promise.all([
+      updated.demandId
+        ? this.prisma.demand.findUnique({
+            where: { id: updated.demandId },
+            select: { id: true, demandNo: true, title: true },
+          })
+        : null,
+      updated.teamId
+        ? this.prisma.team.findUnique({
+            where: { id: updated.teamId },
+            select: { id: true, name: true },
+          })
+        : null,
+      updated.companyId
+        ? this.prisma.company.findUnique({
+            where: { id: updated.companyId },
+            select: { id: true, name: true },
+          })
+        : null,
+    ]);
 
     await this.eventLog.log({
       bizType: 'quote',
@@ -475,7 +742,12 @@ export class AdminService {
       detail: { action, remark },
     });
 
-    return this.transformQuote(updated);
+    return this.transformQuote({
+      ...updated,
+      demand,
+      team,
+      company,
+    });
   }
 
   // ==================== 订单管理 ====================
@@ -499,26 +771,79 @@ export class AdminService {
         skip: pagination.skip,
         take: pagination.take,
         orderBy: { createdAt: 'desc' },
-        include: {
-          demand: {
-            select: { id: true, demandNo: true, title: true, demoType: true },
-          },
-          user: {
-            select: { id: true, nickname: true, phone: true },
-          },
-          team: {
-            select: { id: true, name: true },
-          },
-          company: {
-            select: { id: true, name: true },
-          },
+        select: {
+          id: true,
+          orderNo: true,
+          demandId: true,
+          userId: true,
+          teamId: true,
+          companyId: true,
+          quoteIds: true,
+          finalPrice: true,
+          status: true,
+          confirmedAt: true,
+          startedAt: true,
+          completedAt: true,
+          acceptedAt: true,
+          createdBy: true,
+          createdAt: true,
+          updatedAt: true,
         },
-      } as any),
+      }),
       this.prisma.order.count({ where }),
     ]);
 
+    const demandIds = list.map((o) => o.demandId).filter(Boolean);
+    const userIds = list.map((o) => o.userId).filter(Boolean);
+    const teamIds = list.map((o) => o.teamId).filter(Boolean);
+    const companyIds = list.map((o) => o.companyId).filter(Boolean);
+
+    const [demands, users, teams, companies] = await Promise.all([
+      demandIds.length > 0
+        ? this.prisma.demand.findMany({
+            where: { id: { in: demandIds } },
+            select: { id: true, demandNo: true, title: true, demoType: true },
+          })
+        : [],
+      userIds.length > 0
+        ? this.prisma.user.findMany({
+            where: { id: { in: userIds } },
+            select: { id: true, nickname: true, phone: true },
+          })
+        : [],
+      teamIds.length > 0
+        ? this.prisma.team.findMany({
+            where: { id: { in: teamIds } },
+            select: { id: true, name: true },
+          })
+        : [],
+      companyIds.length > 0
+        ? this.prisma.company.findMany({
+            where: { id: { in: companyIds } },
+            select: { id: true, name: true },
+          })
+        : [],
+    ]);
+
+    const demandMap = new Map<string, any>();
+    demands.forEach((d) => demandMap.set(d.id, d));
+    const userMap = new Map<string, any>();
+    users.forEach((u) => userMap.set(u.id, u));
+    const teamMap = new Map<string, any>();
+    teams.forEach((t) => teamMap.set(t.id, t));
+    const companyMap = new Map<string, any>();
+    companies.forEach((c) => companyMap.set(c.id, c));
+
     return {
-      list: list.map((item) => this.transformOrder(item)),
+      list: list.map((item) =>
+        this.transformOrder({
+          ...item,
+          demand: demandMap.get(item.demandId) || null,
+          user: userMap.get(item.userId) || null,
+          team: teamMap.get(item.teamId) || null,
+          company: companyMap.get(item.companyId) || null,
+        }),
+      ),
       total,
       page: pagination.page,
       pageSize: pagination.pageSize,
@@ -543,20 +868,56 @@ export class AdminService {
         skip: pagination.skip,
         take: pagination.take,
         orderBy: { logDate: 'desc' },
-        include: {
-          order: {
-            select: { id: true, orderNo: true },
-          },
-          team: {
-            select: { id: true, name: true },
-          },
+        select: {
+          id: true,
+          orderId: true,
+          teamId: true,
+          logDate: true,
+          content: true,
+          progress: true,
+          workers: true,
+          imageIds: true,
+          videoIds: true,
+          isAbnormal: true,
+          abnormalDesc: true,
+          createdAt: true,
+          updatedAt: true,
         },
-      } as any),
+      }),
       this.prisma.constructionLog.count({ where }),
     ]);
 
+    const orderIds = list.map((l) => l.orderId).filter(Boolean);
+    const teamIds = list.map((l) => l.teamId).filter(Boolean);
+
+    const [orders, teams] = await Promise.all([
+      orderIds.length > 0
+        ? this.prisma.order.findMany({
+            where: { id: { in: orderIds } },
+            select: { id: true, orderNo: true },
+          })
+        : [],
+      teamIds.length > 0
+        ? this.prisma.team.findMany({
+            where: { id: { in: teamIds } },
+            select: { id: true, name: true },
+          })
+        : [],
+    ]);
+
+    const orderMap = new Map<string, any>();
+    orders.forEach((o) => orderMap.set(o.id, o));
+    const teamMapForLog = new Map<string, any>();
+    teams.forEach((t) => teamMapForLog.set(t.id, t));
+
     return {
-      list: list.map((item) => this.transformConstructionLog(item)),
+      list: list.map((item) =>
+        this.transformConstructionLog({
+          ...item,
+          order: orderMap.get(item.orderId) || null,
+          team: teamMapForLog.get(item.teamId) || null,
+        }),
+      ),
       total,
       page: pagination.page,
       pageSize: pagination.pageSize,
@@ -584,20 +945,58 @@ export class AdminService {
         skip: pagination.skip,
         take: pagination.take,
         orderBy: { createdAt: 'desc' },
-        include: {
-          team: {
-            select: { id: true, name: true },
-          },
-          company: {
-            select: { id: true, name: true },
-          },
+        select: {
+          id: true,
+          teamId: true,
+          companyId: true,
+          title: true,
+          demoType: true,
+          description: true,
+          address: true,
+          area: true,
+          duration: true,
+          beforeImageIds: true,
+          afterImageIds: true,
+          status: true,
+          viewCount: true,
+          createdAt: true,
+          updatedAt: true,
         },
-      } as any),
+      }),
       this.prisma.case.count({ where }),
     ]);
 
+    const teamIds = list.map((c) => c.teamId).filter(Boolean);
+    const companyIds = list.map((c) => c.companyId).filter(Boolean);
+
+    const [teams, companies] = await Promise.all([
+      teamIds.length > 0
+        ? this.prisma.team.findMany({
+            where: { id: { in: teamIds } },
+            select: { id: true, name: true },
+          })
+        : [],
+      companyIds.length > 0
+        ? this.prisma.company.findMany({
+            where: { id: { in: companyIds } },
+            select: { id: true, name: true },
+          })
+        : [],
+    ]);
+
+    const teamMap = new Map<string, any>();
+    teams.forEach((t) => teamMap.set(t.id, t));
+    const companyMapForCase = new Map<string, any>();
+    companies.forEach((c) => companyMapForCase.set(c.id, c));
+
     return {
-      list: list.map((item) => this.transformCase(item)),
+      list: list.map((item) =>
+        this.transformCase({
+          ...item,
+          team: teamMap.get(item.teamId) || null,
+          company: companyMapForCase.get(item.companyId) || null,
+        }),
+      ),
       total,
       page: pagination.page,
       pageSize: pagination.pageSize,
@@ -621,15 +1020,37 @@ export class AdminService {
     const updated = await this.prisma.case.update({
       where: { id: caseId },
       data: { status },
-      include: {
-        team: {
-          select: { id: true, name: true },
-        },
-        company: {
-          select: { id: true, name: true },
-        },
+      select: {
+        id: true,
+        teamId: true,
+        companyId: true,
+        title: true,
+        demoType: true,
+        description: true,
+        address: true,
+        area: true,
+        duration: true,
+        status: true,
+        viewCount: true,
+        createdAt: true,
+        updatedAt: true,
       },
-    } as any);
+    });
+
+    const [team, company] = await Promise.all([
+      updated.teamId
+        ? this.prisma.team.findUnique({
+            where: { id: updated.teamId },
+            select: { id: true, name: true },
+          })
+        : null,
+      updated.companyId
+        ? this.prisma.company.findUnique({
+            where: { id: updated.companyId },
+            select: { id: true, name: true },
+          })
+        : null,
+    ]);
 
     await this.eventLog.log({
       bizType: 'case',
@@ -639,7 +1060,11 @@ export class AdminService {
       detail: { action },
     });
 
-    return this.transformCase(updated);
+    return this.transformCase({
+      ...updated,
+      team,
+      company,
+    });
   }
 
   // ==================== 合规模板管理 ====================
@@ -940,6 +1365,8 @@ export class AdminService {
         nickname: demand.user.nickname,
         phone: demand.user.phone,
       };
+      result.userName = demand.user.nickname;
+      result.userPhone = demand.user.phone;
     }
 
     if (demand._count) {
@@ -976,6 +1403,8 @@ export class AdminService {
         demandNo: quote.demand.demandNo,
         title: quote.demand.title,
       };
+      result.demandNo = quote.demand.demandNo;
+      result.demandTitle = quote.demand.title;
     }
 
     if (quote.team) {
@@ -983,6 +1412,7 @@ export class AdminService {
         id: quote.team.id,
         name: quote.team.name,
       };
+      result.teamName = quote.team.name;
     }
 
     if (quote.company) {
@@ -990,6 +1420,7 @@ export class AdminService {
         id: quote.company.id,
         name: quote.company.name,
       };
+      result.companyName = quote.company.name;
     }
 
     return result;
@@ -1024,6 +1455,8 @@ export class AdminService {
         title: order.demand.title,
         demoType: order.demand.demoType,
       };
+      result.demandNo = order.demand.demandNo;
+      result.demandTitle = order.demand.title;
     }
 
     if (order.user) {
@@ -1032,6 +1465,8 @@ export class AdminService {
         nickname: order.user.nickname,
         phone: order.user.phone,
       };
+      result.userName = order.user.nickname;
+      result.userPhone = order.user.phone;
     }
 
     if (order.team) {
@@ -1039,6 +1474,7 @@ export class AdminService {
         id: order.team.id,
         name: order.team.name,
       };
+      result.teamName = order.team.name;
     }
 
     if (order.company) {
@@ -1046,6 +1482,7 @@ export class AdminService {
         id: order.company.id,
         name: order.company.name,
       };
+      result.companyName = order.company.name;
     }
 
     return result;
@@ -1075,6 +1512,7 @@ export class AdminService {
         id: log.order.id,
         orderNo: log.order.orderNo,
       };
+      result.orderNo = log.order.orderNo;
     }
 
     if (log.team) {
@@ -1082,6 +1520,7 @@ export class AdminService {
         id: log.team.id,
         name: log.team.name,
       };
+      result.teamName = log.team.name;
     }
 
     return result;
@@ -1113,6 +1552,7 @@ export class AdminService {
         id: caseItem.team.id,
         name: caseItem.team.name,
       };
+      result.teamName = caseItem.team.name;
     }
 
     if (caseItem.company) {
@@ -1120,6 +1560,7 @@ export class AdminService {
         id: caseItem.company.id,
         name: caseItem.company.name,
       };
+      result.companyName = caseItem.company.name;
     }
 
     return result;

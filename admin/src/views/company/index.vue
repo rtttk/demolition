@@ -100,7 +100,7 @@
       <el-table :data="teamList" v-loading="teamsLoading" stripe border size="small">
         <el-table-column prop="id" label="ID" width="60" />
         <el-table-column prop="name" label="团队名称" min-width="120" />
-        <el-table-column prop="leaderName" label="负责人" width="100" />
+        <el-table-column prop="leaderAName" label="负责人" width="100" />
         <el-table-column prop="teamSize" label="团队人数" width="90" />
         <el-table-column prop="status" label="状态" width="80">
           <template #default="{ row }">

@@ -338,4 +338,21 @@ export class UserService {
       pageSize: pagination.pageSize,
     };
   }
+
+  /**
+   * 获取用户统计信息
+   */
+  async getUserStats(userId: string) {
+    const [demandCount, orderCount, reviewCount] = await Promise.all([
+      this.prisma.demand.count({ where: { userId } }),
+      this.prisma.order.count({ where: { userId } }),
+      this.prisma.review.count({ where: { userId } }),
+    ]);
+
+    return {
+      demandCount,
+      orderCount,
+      reviewCount,
+    };
+  }
 }

@@ -32,3 +32,10 @@ export function getUserRoles() {
 export function switchUserRole(data) {
   return put('/users/role', data)
 }
+
+/**
+ * 获取用户统计信息
+ */
+export function getUserStats() {
+  return get('/users/stats')
+}

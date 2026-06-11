@@ -1,4 +1,4 @@
-import { IsInt, IsString, IsOptional, IsArray, Min, Max } from 'class-validator';
+import { IsString, IsOptional, IsArray, Min, Max, IsInt } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -69,10 +69,9 @@ export class CreateDemandDto {
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional({ description: '图片文件ID列表', type: [Number] })
+  @ApiPropertyOptional({ description: '图片文件ID列表', type: [String] })
   @IsOptional()
   @IsArray()
-  @Type(() => Number)
-  @IsInt({ each: true })
-  imageIds?: number[];
+  @IsString({ each: true })
+  imageIds?: string[];
 }

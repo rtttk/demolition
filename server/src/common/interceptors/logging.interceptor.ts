@@ -3,11 +3,11 @@ import {
   NestInterceptor,
   ExecutionContext,
   CallHandler,
-  Logger,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
 import { throwError } from 'rxjs';
+import { logger } from '../utils/logger.util';
 
 /**
  * JSON序列化时处理BigInt类型
@@ -21,7 +21,6 @@ function bigIntReplacer(_key: string, value: any): any {
 
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
-  private readonly logger = new Logger('HTTP');
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
@@ -54,7 +53,7 @@ export class LoggingInterceptor implements NestInterceptor {
             statusCode: response.statusCode || 200,
           };
 
-          this.logger.log(JSON.stringify(responseLog, bigIntReplacer, 2));
+          logger.info(JSON.stringify(responseLog, bigIntReplacer, 2));
         });
       }),
       catchError((error) => {
@@ -73,7 +72,7 @@ export class LoggingInterceptor implements NestInterceptor {
             },
           };
 
-          this.logger.error(JSON.stringify(errorLog, bigIntReplacer, 2));
+          logger.error(JSON.stringify(errorLog, bigIntReplacer, 2));
         });
 
         return throwError(() => error);

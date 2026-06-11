@@ -3,7 +3,7 @@
     <!-- 自定义导航栏 -->
     <view class="nav-bar" :style="{ paddingTop: statusBarHeight + 'px' }">
       <view class="nav-content">
-        <text class="nav-title">订单大厅</text>
+        <text class="nav-title">需求大厅</text>
         <view class="nav-right" @click="goSearch">
           <text class="search-icon">&#128269;</text>
         </view>
@@ -12,17 +12,29 @@
 
     <!-- 筛选栏 -->
     <view class="filter-bar">
-      <view class="filter-item" @click="showTypeFilter">
+      <view 
+        class="filter-item" 
+        :class="{ active: currentType !== '' }"
+        @click="showTypeFilter"
+      >
         <text class="filter-text">{{ currentTypeLabel }}</text>
-        <text class="filter-arrow">v</text>
+        <text class="filter-arrow">▼</text>
       </view>
-      <view class="filter-item" @click="showDistrictFilter">
+      <view 
+        class="filter-item" 
+        :class="{ active: currentDistrict !== '' }"
+        @click="showDistrictFilter"
+      >
         <text class="filter-text">{{ currentDistrictLabel }}</text>
-        <text class="filter-arrow">v</text>
+        <text class="filter-arrow">▼</text>
       </view>
-      <view class="filter-item" @click="showSortFilter">
+      <view 
+        class="filter-item" 
+        :class="{ active: currentSort !== 'newest' }"
+        @click="showSortFilter"
+      >
         <text class="filter-text">{{ currentSortLabel }}</text>
-        <text class="filter-arrow">v</text>
+        <text class="filter-arrow">▼</text>
       </view>
     </view>
 
@@ -99,7 +111,7 @@ const currentSort = ref('newest')
 
 const currentTypeLabel = computed(() => {
   if (!currentType.value) return '拆除类型'
-  const found = DEMO_TYPE_OPTIONS.find(t => t.value === currentType.value)
+  const found = DEMO_TYPE_OPTIONS.find(t => t.value === Number(currentType.value))
   return found ? found.label : '拆除类型'
 })
 
@@ -124,7 +136,7 @@ async function fetchDemands(isRefresh = false) {
 
   try {
     const params = { page: page.value, size: PAGE_DEFAULTS.SIZE }
-    if (currentType.value) params.demoType = currentType.value
+    if (currentType.value) params.demoType = Number(currentType.value)
     if (currentDistrict.value) params.district = currentDistrict.value
     if (currentSort.value) params.sort = currentSort.value
 
@@ -268,18 +280,32 @@ onMounted(() => {
 
 .filter-bar {
   display: flex;
-  gap: 16rpx;
-  padding: 20rpx 32rpx;
+  gap: $spacing-3;
+  padding: $spacing-4 $spacing-8;
   background-color: $bg-card;
+  border-bottom: 1rpx solid $border-color-light;
 }
 
 .filter-item {
   display: flex;
   align-items: center;
-  gap: 4rpx;
-  padding: 8rpx 20rpx;
+  gap: $spacing-1;
+  padding: $spacing-2 $spacing-4;
   background-color: $bg-gray;
-  border-radius: $radius-round;
+  border-radius: $radius-md;
+  transition: all $transition-fast;
+
+  &:active {
+    opacity: 0.7;
+  }
+
+  &.active {
+    background-color: rgba($primary-color, 0.1);
+
+    .filter-text {
+      color: $primary-color;
+    }
+  }
 }
 
 .filter-text {

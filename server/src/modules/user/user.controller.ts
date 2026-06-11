@@ -92,4 +92,10 @@ export class UserController {
 
     return this.userService.getUserList(pagination, filters);
   }
+
+  @Get('stats')
+  @ApiOperation({ summary: '获取用户统计信息' })
+  async getUserStats(@CurrentUser('id') userId: string) {
+    return this.userService.getUserStats(userId);
+  }
 }

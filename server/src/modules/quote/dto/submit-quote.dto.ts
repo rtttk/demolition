@@ -1,12 +1,11 @@
-import { IsInt, IsOptional, IsString, IsNumber, Min } from 'class-validator';
+import { IsOptional, IsString, IsNumber, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class SubmitQuoteDto {
-  @ApiProperty({ description: '需求ID', example: 1 })
-  @IsInt()
-  @Type(() => Number)
-  demandId: number;
+  @ApiProperty({ description: '需求ID', example: 'cmq7nwxgm00029phral1vfe5y' })
+  @IsString()
+  demandId: string;
 
   @ApiProperty({ description: '报价金额', example: 50000.00 })
   @IsNumber()
@@ -16,7 +15,7 @@ export class SubmitQuoteDto {
 
   @ApiPropertyOptional({ description: '工期（天）', example: 30 })
   @IsOptional()
-  @IsInt()
+  @IsNumber()
   @Min(0)
   @Type(() => Number)
   duration?: number;

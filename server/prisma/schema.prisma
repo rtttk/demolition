@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "mysql"
-  url      = env("DATABASE_URL")
+  url      = "mysql://root:@localhost:3306/demolition"
 }
 
 // ==================== 用户与组织 ====================
@@ -283,7 +283,7 @@ model File {
   height      Int?
   duration    Int?
   sortOrder   Int       @default(0) @map("sort_order")
-  uploaderId  Int?      @map("uploader_id")
+  uploaderId  String?     @map("uploader_id")
   createdAt   DateTime  @default(now()) @map("created_at")
 
   @@index([uploaderId])

@@ -4,6 +4,37 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { logger } from './common/utils/logger.util';
+import * as path from 'path';
+import * as fs from 'fs';
+
+// 确保 logs 目录存在
+const logDir = path.join(process.cwd(), 'logs');
+if (!fs.existsSync(logDir)) {
+  fs.mkdirSync(logDir, { recursive: true });
+}
+
+// 捕获 console.log/write 输出到文件
+const logFile = path.join(logDir, 'app.log');
+const originalLog = console.log;
+const originalError = console.error;
+const originalWarn = console.warn;
+
+console.log = (...args: any[]) => {
+  const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' ');
+  originalLog.apply(console, args);
+  fs.appendFileSync(logFile, `${new Date().toISOString()} [INFO] ${msg}\n`);
+};
+console.error = (...args: any[]) => {
+  const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' ');
+  originalError.apply(console, args);
+  fs.appendFileSync(logFile, `${new Date().toISOString()} [ERROR] ${msg}\n`);
+};
+console.warn = (...args: any[]) => {
+  const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' ');
+  originalWarn.apply(console, args);
+  fs.appendFileSync(logFile, `${new Date().toISOString()} [WARN] ${msg}\n`);
+};
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -45,7 +76,7 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
-  console.log(`Application running on: http://localhost:${port}`);
-  console.log(`Swagger docs: http://localhost:${port}/api/docs`);
+  logger.info(`Application running on: http://localhost:${port}`);
+  logger.info(`Swagger docs: http://localhost:${port}/api/docs`);
 }
 bootstrap();

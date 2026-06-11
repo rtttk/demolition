@@ -48,7 +48,7 @@ export class FileController {
   @UseInterceptors(FileInterceptor('file'))
   async uploadFile(
     @UploadedFile() file: any,
-    @CurrentUser('id') userId: number,
+    @CurrentUser('id') userId: string,
   ) {
     return this.fileService.uploadFile(file, userId);
   }
@@ -74,22 +74,22 @@ export class FileController {
   @UseInterceptors(FilesInterceptor('files', 10))
   async uploadFiles(
     @UploadedFiles() files: any[],
-    @CurrentUser('id') userId: number,
+    @CurrentUser('id') userId: string,
   ) {
     return this.fileService.uploadFiles(files, userId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: '获取文件信息' })
-  async getFileInfo(@Param('id', ParseIntPipe) id: number) {
+  async getFileInfo(@Param('id') id: string) {
     return this.fileService.getFileInfo(id);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: '删除文件' })
   async deleteFile(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser('id') userId: number,
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
   ) {
     return this.fileService.deleteFile(id, userId);
   }

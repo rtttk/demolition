@@ -168,9 +168,9 @@ export class FileService {
    */
   async uploadFile(
     file: any,
-    uploaderId: number,
+    uploaderId: string,
   ): Promise<{
-    id: number;
+    id: string;
     fileUrl: string;
     fileName: string;
     fileType: number;
@@ -211,7 +211,7 @@ export class FileService {
       );
 
       return {
-        id: Number(fileRecord.id),
+        id: fileRecord.id,
         fileUrl: fileRecord.fileUrl,
         fileName: fileRecord.fileName,
         fileType: fileRecord.fileType,
@@ -231,10 +231,10 @@ export class FileService {
    */
   async uploadFiles(
     files: any[],
-    uploaderId: number,
+    uploaderId: string,
   ): Promise<
     {
-      id: number;
+      id: string;
       fileUrl: string;
       fileName: string;
       fileType: number;
@@ -255,9 +255,9 @@ export class FileService {
   /**
    * 获取文件信息
    */
-  async getFileInfo(fileId: number) {
+  async getFileInfo(fileId: string) {
     const fileRecord = await this.prisma.file.findUnique({
-      where: { id: String(fileId) },
+      where: { id: fileId },
     });
 
     if (!fileRecord) {
@@ -265,7 +265,7 @@ export class FileService {
     }
 
     return {
-      id: Number(fileRecord.id),
+      id: fileRecord.id,
       fileType: fileRecord.fileType,
       fileName: fileRecord.fileName,
       fileUrl: fileRecord.fileUrl,
@@ -283,20 +283,20 @@ export class FileService {
   /**
    * 批量获取文件信息
    */
-  async getFileInfoByIds(fileIds: number[]) {
+  async getFileInfoByIds(fileIds: string[]) {
     if (!fileIds || fileIds.length === 0) {
       return [];
     }
 
     const records = await this.prisma.file.findMany({
       where: {
-        id: { in: fileIds.map((id) => String(id)) },
+        id: { in: fileIds },
       },
       orderBy: { createdAt: 'asc' },
     });
 
     return records.map((r) => ({
-      id: Number(r.id),
+      id: r.id,
       fileType: r.fileType,
       fileName: r.fileName,
       fileUrl: r.fileUrl,
@@ -314,9 +314,9 @@ export class FileService {
   /**
    * 删除文件（校验上传者权限）
    */
-  async deleteFile(fileId: number, userId: number) {
+  async deleteFile(fileId: string, userId: string) {
     const fileRecord = await this.prisma.file.findUnique({
-      where: { id: String(fileId) },
+      where: { id: fileId },
     });
 
     if (!fileRecord) {
@@ -344,7 +344,7 @@ export class FileService {
 
     // 从数据库删除记录
     await this.prisma.file.delete({
-      where: { id: String(fileId) },
+      where: { id: fileId },
     });
 
     this.logger.log(`File record deleted: id=${fileId}`);

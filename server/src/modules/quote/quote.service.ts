@@ -32,7 +32,7 @@ export class QuoteService {
     }
 
     if (demand.status !== 0 && demand.status !== 1) {
-      throw new BadRequestException('该需求当前状态不允许报价');
+      throw new BadRequestException(`该需求当前状态(${demand.status})不允许报价，仅待报价(0)或报价审核中(1)状态可报价`);
     }
 
     // 2. 验证用户有所属团队
@@ -41,20 +41,6 @@ export class QuoteService {
       select: {
         id: true,
         teamId: true,
-        team: {
-          select: {
-            id: true,
-            name: true,
-            companyId: true,
-            company: {
-              select: {
-                id: true,
-                name: true,
-                verifyStatus: true,
-              },
-            } as any,
-          } as any,
-        },
       },
     });
 
@@ -62,9 +48,35 @@ export class QuoteService {
       throw new BadRequestException('请先加入团队后再报价');
     }
 
-    // 3. 验证团队所属公司已认证（verifyStatus=2 表示已认证）
-    const company = null;
-    if (!company || company.verifyStatus !== 2) {
+    // 查询团队信息
+    const team = await this.prisma.team.findUnique({
+      where: { id: user.teamId },
+      select: {
+        id: true,
+        name: true,
+        companyId: true,
+      },
+    });
+
+    if (!team || !team.companyId) {
+      throw new BadRequestException('您的团队尚未关联公司');
+    }
+
+    // 查询公司信息
+    const company = await this.prisma.company.findUnique({
+      where: { id: team.companyId },
+      select: {
+        id: true,
+        name: true,
+        verifyStatus: true,
+      },
+    });
+
+    if (!company) {
+      throw new BadRequestException('团队关联的公司不存在');
+    }
+
+    if (company.verifyStatus !== 2) {
       throw new BadRequestException('所属公司尚未通过认证，无法报价');
     }
 
@@ -261,6 +273,35 @@ export class QuoteService {
     }
 
     return quote;
+  }
+
+  /**
+   * 检查当前用户是否已对某需求报价
+   */
+  async checkQuote(userId: string, demandId: string) {
+    // 查找用户所属团队
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { teamId: true },
+    });
+
+    if (!user || !user.teamId) {
+      return { quoted: false };
+    }
+
+    const quote = await this.prisma.quote.findFirst({
+      where: {
+        demandId: String(demandId),
+        teamId: user.teamId,
+      },
+      select: { id: true, status: true },
+    });
+
+    return {
+      quoted: !!quote,
+      quoteId: quote?.id || null,
+      status: quote?.status ?? null,
+    };
   }
 
   /**

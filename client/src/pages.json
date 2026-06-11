@@ -202,10 +202,10 @@
         "text": "首页"
       },
       {
-        "pagePath": "pages/order/index",
+        "pagePath": "pages/demand/my-list",
         "iconPath": "static/tabbar/order.png",
         "selectedIconPath": "static/tabbar/order-active.png",
-        "text": "订单"
+        "text": "需求"
       },
       {
         "pagePath": "pages/message/index",

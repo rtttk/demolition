@@ -46,7 +46,13 @@ function responseInterceptor(response) {
   }
 
   if (statusCode < 200 || statusCode >= 300) {
-    const errMsg = data?.message || `请求失败(${statusCode})`
+    let errMsg = data?.message || `请求失败(${statusCode})`
+    // 确保 errMsg 是字符串
+    if (Array.isArray(errMsg)) {
+      errMsg = errMsg.join(', ')
+    } else if (typeof errMsg !== 'string') {
+      errMsg = `请求失败(${statusCode})`
+    }
     uni.showToast({ title: errMsg, icon: 'none' })
     throw new Error(errMsg)
   }
@@ -155,7 +161,7 @@ export function uploadFile(url, filePath, formData = {}) {
       header: headers,
       success: (res) => {
         console.log('上传响应:', res.statusCode, res.data)
-        if (res.statusCode === 200) {
+        if (res.statusCode === 200 || res.statusCode === 201) {
           try {
             const data = JSON.parse(res.data)
             if (data.code === 0 || data.code === 200) {
