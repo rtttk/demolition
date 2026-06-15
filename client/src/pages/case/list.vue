@@ -83,7 +83,15 @@ async function fetchCases(isRefresh = false) {
 
     const res = await getCases(params)
     const data = res.data || res
-    const list = data.list || data.records || []
+    const list = (data.list || data.records || []).map(item => {
+      const afterImages = item.afterImageUrls || []
+      return {
+        ...item,
+        coverImage: afterImages[0] || item.coverImage || item.images?.[0] || null,
+        images: [...(item.afterImageUrls || []), ...(item.beforeImageUrls || [])],
+        teamName: item.team?.name || item.teamName || '专业团队'
+      }
+    })
 
     if (isRefresh) {
       caseList.value = list

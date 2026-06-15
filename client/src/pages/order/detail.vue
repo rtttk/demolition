@@ -19,15 +19,15 @@
     </view>
 
     <!-- 团队信息 -->
-    <view v-if="order.teamInfo" class="team-section">
+    <view v-if="order.team" class="team-section">
       <text class="section-title">施工团队</text>
       <view class="team-card" @click="goTeamDetail">
-        <image class="team-avatar" :src="order.teamInfo.avatar || '/static/logo.png'" mode="aspectFill" />
+        <image class="team-avatar" :src="order.team.avatar || '/static/logo.png'" mode="aspectFill" />
         <view class="team-detail">
-          <text class="team-name">{{ order.teamInfo.name || '施工团队' }}</text>
-          <text class="team-desc">{{ order.teamInfo.specialty || '专业拆除' }} | {{ order.teamInfo.experience || '' }}年经验</text>
+          <text class="team-name">{{ order.team.name || '施工团队' }}</text>
+          <text class="team-desc">{{ order.team.company?.name || '专业拆除' }}</text>
         </view>
-        <text class="team-arrow">></text>
+        <text class="team-arrow" decode>{{ '>' }}</text>
       </view>
     </view>
 
@@ -36,29 +36,53 @@
       <text class="section-title">需求信息</text>
       <view class="info-grid">
         <view class="info-item">
+          <text class="info-label">需求标题</text>
+          <text class="info-value">{{ order.demand?.title || '--' }}</text>
+        </view>
+        <view class="info-item">
           <text class="info-label">拆除类型</text>
           <text class="info-value">{{ order.demoTypeName || '--' }}</text>
         </view>
         <view class="info-item">
           <text class="info-label">拆除面积</text>
-          <text class="info-value">{{ order.area ? order.area + 'm²' : '--' }}</text>
+          <text class="info-value">{{ order.demand?.area ? order.demand.area + 'm²' : '--' }}</text>
         </view>
         <view class="info-item">
-          <text class="info-label">施工地址</text>
-          <text class="info-value">{{ order.address || '--' }}</text>
+          <text class="info-label">所在区域</text>
+          <text class="info-value">{{ order.demand?.district || '--' }}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">详细地址</text>
+          <text class="info-value">{{ order.demand?.address || '--' }}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">联系人</text>
+          <text class="info-value">{{ order.demand?.contactName || '--' }}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">联系电话</text>
+          <text class="info-value">{{ order.demand?.contactPhone || '--' }}</text>
+        </view>
+        <view class="info-item" v-if="order.demand?.description">
+          <text class="info-label">需求描述</text>
+          <text class="info-value">{{ order.demand?.description }}</text>
         </view>
         <view class="info-item">
           <text class="info-label">合同金额</text>
           <text class="info-value price">¥{{ order.amount || '--' }}</text>
         </view>
+        <view class="info-item" v-if="order.planStartDate">
+          <text class="info-label">计划开工</text>
+          <text class="info-value">{{ order.planStartDate }}</text>
+        </view>
       </view>
     </view>
 
     <!-- 最近施工日志 -->
-    <view v-if="recentLogs.length > 0" class="log-section">
+    <view v-if="order.status === 3 && recentLogs.length > 0" class="log-section">
       <view class="section-header">
         <text class="section-title">施工动态</text>
-        <text class="view-all" @click="goLogs">查看全部 ></text>
+        <text class="view-all" decode @click="goLogs">查看全部 {{ '>' }}</text>
       </view>
       <view
         v-for="(log, index) in recentLogs"
@@ -68,9 +92,9 @@
         <view class="log-dot" />
         <view class="log-content">
           <text class="log-text">{{ log.content || '' }}</text>
-          <view class="log-images" v-if="log.images && log.images.length > 0">
+          <view class="log-images" v-if="log.imageUrls && log.imageUrls.length > 0">
             <image
-              v-for="(img, imgIdx) in log.images.slice(0, 3)"
+              v-for="(img, imgIdx) in log.imageUrls.slice(0, 3)"
               :key="imgIdx"
               class="log-image"
               :src="img"
@@ -111,7 +135,9 @@ const order = ref({})
 const recentLogs = ref([])
 
 const progressSteps = ref([
-  { label: '已签约' },
+  { label: '待审核' },
+  { label: '待签约' },
+  { label: '待开工' },
   { label: '施工中' },
   { label: '待验收' },
   { label: '已完成' }
@@ -119,12 +145,13 @@ const progressSteps = ref([
 
 const currentStep = computed(() => {
   const status = order.value.status
-  const map = { 0: 0, 1: 0, 2: 1, 3: 2, 4: 3 }
+  // 0待审核 1待签约 2待开工 3施工中 4待验收 5已完成
+  const map = { 0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5 }
   return map[status] ?? 0
 })
 
-const showConfirmBtn = computed(() => order.value.status === 3)
-const showReviewBtn = computed(() => order.value.status === 4 && !order.value.reviewed)
+const showConfirmBtn = computed(() => order.value.status === 4)
+const showReviewBtn = computed(() => order.value.status === 5 && !order.value.reviewed)
 
 async function loadDetail() {
   if (!orderId.value) return
@@ -173,14 +200,18 @@ function goReview() {
 }
 
 function goTeamDetail() {
-  if (order.value.teamInfo?.id) {
-    uni.navigateTo({ url: `/pages/team/home?id=${order.value.teamInfo.id}` })
+  if (order.value.team?.id) {
+    uni.navigateTo({ url: `/pages/team/home?id=${order.value.team.id}` })
   }
 }
 
-onLoad((options) => {
+onLoad(async (options) => {
   orderId.value = options.id
-  loadDetail()
+  await loadDetail()
+  // 如果从列表页带 action=accept 参数进来，自动弹出验收确认
+  if (options.action === 'accept' && order.value.status === 4) {
+    handleConfirm()
+  }
 })
 </script>
 

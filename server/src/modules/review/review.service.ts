@@ -32,7 +32,7 @@ export class ReviewService {
     }
 
     // 2. 验证订单已完成
-    if (order.status !== 3) {
+    if (order.status !== 5) {
       throw new BadRequestException('只有已完成的订单才能评价');
     }
 
@@ -99,20 +99,25 @@ export class ReviewService {
         skip: pagination.skip,
         take: pagination.take,
         orderBy: { createdAt: 'desc' },
-        include: {
-          user: {
-            select: {
-              id: true,
-              nickname: true,
-              avatarUrl: true,
-            },
-          },
-        },
-      } as any),
+      }),
       this.prisma.review.count({ where }),
     ]);
 
-    return {list,
+    // 手动查询用户信息
+    const userIds = [...new Set(list.map((r) => r.userId).filter(Boolean))];
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, nickname: true, avatarUrl: true },
+    });
+    const userMap = new Map(users.map((u) => [u.id, u]));
+
+    const resultList = list.map((r) => ({
+      ...r,
+      user: userMap.get(r.userId) || null,
+    }));
+
+    return {
+      list: resultList,
       total,
       page: pagination.page,
       pageSize: pagination.pageSize,

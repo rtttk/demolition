@@ -1,11 +1,24 @@
 import * as winston from 'winston';
 import * as path from 'path';
-import DailyRotateFile from 'winston-daily-rotate-file';
+import * as fs from 'fs';
 
+// 确保 logs 目录存在
 const logDir = path.join(process.cwd(), 'logs');
+if (!fs.existsSync(logDir)) {
+  fs.mkdirSync(logDir, { recursive: true });
+}
+
+// 获取当日日志文件路径
+const getLogFiles = () => {
+  const today = new Date().toISOString().split('T')[0];
+  return {
+    logFile: path.join(logDir, `${today}.log`),
+    errorLogFile: path.join(logDir, `${today}-error.log`),
+  };
+};
 
 // 统一的格式化
-const format = winston.format.combine(
+const fileFormat = winston.format.combine(
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
   winston.format.errors({ stack: true }),
   winston.format.printf(({ timestamp, level, message, stack }) => {
@@ -16,34 +29,38 @@ const format = winston.format.combine(
   }),
 );
 
-// 创建 logger 实例，同时输出到控制台和文件
+const consoleFormat = winston.format.combine(
+  winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
+  winston.format.colorize(),
+  winston.format.printf(({ timestamp, level, message, stack }) => {
+    if (stack) {
+      return `${timestamp} [${level}] ${message}\n${stack}`;
+    }
+    return `${timestamp} [${level}] ${message}`;
+  }),
+);
+
+// 创建 logger 实例
 export const logger = winston.createLogger({
   level: 'debug',
-  format,
+  format: fileFormat,
   transports: [
     // 控制台
     new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.colorize(),
-        format,
-      ),
+      format: consoleFormat,
     }),
-    // 按天轮转的日志文件
-    new DailyRotateFile({
-      dirname: logDir,
-      filename: '%DATE%.log',
-      datePattern: 'YYYY-MM-DD',
-      maxSize: '50m',
-      maxFiles: '7d',
+    // 普通日志文件
+    new winston.transports.File({
+      filename: getLogFiles().logFile,
+      maxsize: 50 * 1024 * 1024, // 50MB
+      maxFiles: 7,
       level: 'debug',
     }),
-    // 错误日志单独文件
-    new DailyRotateFile({
-      dirname: logDir,
-      filename: '%DATE%-error.log',
-      datePattern: 'YYYY-MM-DD',
-      maxSize: '20m',
-      maxFiles: '14d',
+    // 错误日志文件
+    new winston.transports.File({
+      filename: getLogFiles().errorLogFile,
+      maxsize: 20 * 1024 * 1024, // 20MB
+      maxFiles: 14,
       level: 'error',
     }),
   ],

@@ -14,3 +14,8 @@ export function updateUserStatus(id, data) {
 export function assignUserRoles(id, roles) {
   return put(`/admin/users/${id}/roles`, { roles })
 }
+
+// 为用户关联/取消关联团队
+export function assignUserTeam(id, teamId) {
+  return put(`/admin/users/${id}/team`, { teamId })
+}

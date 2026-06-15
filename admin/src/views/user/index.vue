@@ -48,11 +48,13 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="currentRole" label="当前角色" width="100" align="center">
+        <el-table-column prop="teamName" label="所属团队" min-width="160">
           <template #default="{ row }">
-            <el-tag :type="getRoleTagType(row.currentRole)" size="small">
-              {{ ROLE_MAP[row.currentRole] || '未知' }}
-            </el-tag>
+            <span v-if="row.team && row.team.name" style="color: #303133;">
+              {{ row.team.name }}
+              <el-tag v-if="row.isTeamAdmin" type="warning" size="small" style="margin-left: 4px;">队长</el-tag>
+            </span>
+            <span v-else style="color: #909399;">未关联</span>
           </template>
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100" align="center">
@@ -67,10 +69,11 @@
           </template>
         </el-table-column>
         <el-table-column prop="createdAt" label="注册时间" width="170" />
-        <el-table-column label="操作" width="160" align="center" fixed="right">
+        <el-table-column label="操作" width="230" align="center" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleViewDetail(row)">详情</el-button>
             <el-button type="warning" link size="small" @click="handleAssignRoles(row)">分配角色</el-button>
+            <el-button type="success" link size="small" @click="handleAssignTeam(row)">关联团队</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -109,6 +112,13 @@
             {{ ROLE_MAP[currentRow.currentRole] || '未知' }}
           </el-tag>
         </el-descriptions-item>
+        <el-descriptions-item label="所属团队">
+          <span v-if="currentRow.team && currentRow.team.name">
+            {{ currentRow.team.name }}
+            <el-tag v-if="currentRow.isTeamAdmin" type="warning" size="small" style="margin-left: 4px;">队长</el-tag>
+          </span>
+          <span v-else style="color: #909399;">未关联</span>
+        </el-descriptions-item>
         <el-descriptions-item label="状态">
           <el-tag :type="currentRow.status === 1 ? 'success' : 'danger'" size="small">
             {{ STATUS_MAP[currentRow.status] }}
@@ -142,28 +152,73 @@
         <el-button type="primary" @click="submitAssignRoles" :loading="assignLoading">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 关联团队对话框 -->
+    <el-dialog v-model="teamDialogVisible" title="关联团队" width="450px">
+      <el-form :model="teamForm" label-width="80px">
+        <el-form-item label="用户">
+          <span>{{ teamForm.nickname || '-' }}</span>
+        </el-form-item>
+        <el-form-item label="所属团队" required>
+          <el-select
+            v-model="teamForm.teamId"
+            placeholder="请选择团队（留空则取消关联）"
+            clearable
+            filterable
+            style="width: 100%;"
+          >
+            <el-option
+              v-for="team in allTeams"
+              :key="team.id"
+              :label="`${team.name}（${team.companyName || '未关联企业'}）`"
+              :value="team.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <div class="tip-text">
+            <el-icon><InfoFilled /></el-icon>
+            提示：清空选择即为取消团队关联
+          </div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="teamDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitAssignTeam" :loading="teamLoading">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { getUserList, updateUserStatus, assignUserRoles } from '@/api/user'
+import { getUserList, updateUserStatus, assignUserRoles, assignUserTeam } from '@/api/user'
+import { getAllTeams } from '@/api/team'
 import { ROLE_MAP, STATUS_MAP } from '@/utils/constants'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { InfoFilled } from '@element-plus/icons-vue'
 
 const loading = ref(false)
 const assignLoading = ref(false)
+const teamLoading = ref(false)
 const tableData = ref([])
 const total = ref(0)
 const detailVisible = ref(false)
 const currentRow = ref(null)
 const assignDialogVisible = ref(false)
+const teamDialogVisible = ref(false)
+const allTeams = ref([])
 
 const assignForm = reactive({
   id: null,
   nickname: '',
   roles: [1]
+})
+
+const teamForm = reactive({
+  id: null,
+  nickname: '',
+  teamId: ''
 })
 
 const queryParams = reactive({
@@ -185,6 +240,15 @@ const fetchData = async () => {
     // handled by interceptor
   } finally {
     loading.value = false
+  }
+}
+
+const fetchTeams = async () => {
+  try {
+    const teams = await getAllTeams()
+    allTeams.value = Array.isArray(teams) ? teams : (teams.list || [])
+  } catch (error) {
+    // handled by interceptor
   }
 }
 
@@ -243,7 +307,6 @@ const handleAssignRoles = (row) => {
 }
 
 const submitAssignRoles = async () => {
-  // 确保需求方角色始终存在
   if (!assignForm.roles.includes(1)) {
     ElMessage.warning('需求方角色不可移除，已自动添加')
     assignForm.roles.push(1)
@@ -262,8 +325,37 @@ const submitAssignRoles = async () => {
   }
 }
 
+const handleAssignTeam = async (row) => {
+  if (allTeams.value.length === 0) {
+    await fetchTeams()
+  }
+  teamForm.id = row.id
+  teamForm.nickname = row.nickname
+  teamForm.teamId = row.teamId || ''
+  teamDialogVisible.value = true
+}
+
+const submitAssignTeam = async () => {
+  teamLoading.value = true
+  try {
+    await assignUserTeam(teamForm.id, teamForm.teamId || '')
+    if (teamForm.teamId && teamForm.teamId.trim() !== '') {
+      ElMessage.success('团队关联成功')
+    } else {
+      ElMessage.success('已取消团队关联')
+    }
+    teamDialogVisible.value = false
+    fetchData()
+  } catch (error) {
+    // handled by interceptor
+  } finally {
+    teamLoading.value = false
+  }
+}
+
 onMounted(() => {
   fetchData()
+  fetchTeams()
 })
 </script>
 

@@ -32,7 +32,15 @@ export function getOrderDetail(id) {
  * @param {number|string} id
  */
 export function confirmOrder(id) {
-  return put(`/orders/${id}/confirm`)
+  return put(`/orders/${id}/accept`)
+}
+
+/**
+ * 完工申请（服务方）
+ * @param {number|string} id
+ */
+export function completeOrder(id) {
+  return put(`/orders/${id}/complete`)
 }
 
 /**
@@ -49,4 +57,13 @@ export function acceptOrder(id) {
  */
 export function cancelOrder(id) {
   return put(`/orders/${id}/cancel`)
+}
+
+/**
+ * 上传合同（服务方）
+ * @param {number|string} orderId
+ * @param {Object} data - { contractId, planStartDate }
+ */
+export function uploadContract(orderId, data) {
+  return post(`/orders/${orderId}/contract`, data)
 }

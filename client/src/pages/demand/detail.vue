@@ -76,7 +76,7 @@
         <view class="contact-item">
           <text class="contact-label">联系电话</text>
           <text class="contact-value">{{ maskedPhone }}</text>
-          <view class="call-btn" @click="makeCall">
+          <view v-if="fromProvider" class="call-btn" @click="makeCall">
             <text class="call-text">拨打</text>
           </view>
         </view>
@@ -95,17 +95,17 @@
           <view class="team-info">
             <image class="team-avatar" :src="quote.teamAvatar || '/static/logo.png'" mode="aspectFill" />
             <view class="team-detail">
-              <text class="team-name">{{ quote.teamName || '施工团队' }}</text>
-              <text class="quote-time">{{ quote.createTime || '' }}</text>
+              <text class="team-name">{{ quote.team?.name || '施工团队' }}</text>
+              <text class="quote-time">{{ quote.createdAt || '' }}</text>
             </view>
           </view>
           <text class="quote-price">¥{{ quote.price || '--' }}</text>
         </view>
-        <view v-if="quote.description" class="quote-desc">
-          <text class="desc-text">{{ quote.description }}</text>
+        <view v-if="quote.planSummary" class="quote-desc">
+          <text class="desc-text">{{ quote.planSummary }}</text>
         </view>
         <view class="quote-footer">
-          <text class="quote-days">预计工期：{{ quote.estimatedDays || '--' }}天</text>
+          <text class="quote-days">预计工期：{{ quote.duration || '--' }}天</text>
           <view v-if="canSelectQuote" class="select-btn" @click="handleSelectQuote(quote)">
             <text class="select-text">选择此报价</text>
           </view>
@@ -270,12 +270,13 @@ async function loadDetail() {
 }
 
 async function handleSelectQuote(quote) {
-  const confirmed = await showConfirm(`确认选择 ${quote.teamName} 的报价?`)
+  const teamName = quote.team?.name || '该团队'
+  const confirmed = await showConfirm(`确认选择 ${teamName} 的报价?`)
   if (!confirmed) return
 
   showLoading('提交中...')
   try {
-    await selectQuote(demandId.value, { quoteId: quote.id })
+    await selectQuote(demandId.value, { quoteIds: [quote.id] })
     hideLoading()
     showSuccess('选择成功')
     loadDetail()

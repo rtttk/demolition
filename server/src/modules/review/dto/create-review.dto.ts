@@ -1,17 +1,17 @@
-import { IsInt, IsOptional, IsString, Min, Max, IsArray } from 'class-validator';
+import { IsInt, IsOptional, IsString, Min, Max, IsArray, IsNotEmpty } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateReviewDto {
   @ApiProperty({ description: '订单ID' })
-  @IsInt()
-  @Type(() => Number)
-  orderId: number;
+  @IsString()
+  @IsNotEmpty()
+  orderId: string;
 
   @ApiProperty({ description: '团队ID' })
-  @IsInt()
-  @Type(() => Number)
-  teamId: number;
+  @IsString()
+  @IsNotEmpty()
+  teamId: string;
 
   @ApiProperty({ description: '评分 1-5' })
   @IsInt()
@@ -25,8 +25,8 @@ export class CreateReviewDto {
   @IsString()
   content?: string;
 
-  @ApiPropertyOptional({ description: '图片ID列表', type: [Number] })
+  @ApiPropertyOptional({ description: '图片ID列表' })
   @IsOptional()
   @IsArray()
-  imageIds?: number[];
+  imageIds?: string[];
 }

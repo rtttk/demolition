@@ -45,7 +45,7 @@
     <view class="case-section">
       <view class="section-header">
         <text class="section-title">施工案例</text>
-        <text class="view-all" @click="goCaseList">查看全部 ></text>
+        <text class="view-all" decode @click="goCaseList">查看全部 {{ '>' }}</text>
       </view>
       <view v-if="caseList.length > 0" class="case-list">
         <case-card

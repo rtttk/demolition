@@ -61,6 +61,15 @@ export class TeamController {
   }
 
   /**
+   * GET /teams/recommend - 获取推荐团队（公开）
+   */
+  @Public()
+  @Get('recommend')
+  async getRecommendTeams(@Query() pagination: PaginationDto) {
+    return this.teamService.getRecommendTeams(pagination);
+  }
+
+  /**
    * GET /teams/list - 我的团队列表（服务方）
    */
   @Get('list')

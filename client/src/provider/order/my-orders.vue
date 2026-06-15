@@ -44,8 +44,16 @@
           </view>
           <view class="card-footer">
             <text class="create-time">{{ order.createTime || '' }}</text>
-            <view v-if="order.status === 1" class="action-btn" @click.stop="acceptOrder(order)">
-              <text class="action-text">接受订单</text>
+            <view v-if="order.status === 1" class="action-btn" @click.stop="goUploadContract(order)">
+              <text class="action-text">上传合同</text>
+            </view>
+            <view v-if="order.status === 3" class="action-btns">
+              <view class="action-btn action-btn--secondary" @click.stop="goUploadLog(order)">
+                <text class="action-text">登记施工日志</text>
+              </view>
+              <view class="action-btn" @click.stop="handleComplete(order)">
+                <text class="action-text">申请完工</text>
+              </view>
             </view>
           </view>
         </view>
@@ -67,7 +75,7 @@ import { onShow } from '@dcloudio/uni-app'
 import StatusTag from '@/components/status-tag/status-tag.vue'
 import EmptyState from '@/components/empty-state/empty-state.vue'
 import LoadingMore from '@/components/loading-more/loading-more.vue'
-import { getMyOrders, acceptOrder as acceptOrderApi } from '@/api/order'
+import { getMyOrders, completeOrder } from '@/api/order'
 import { PAGE_DEFAULTS } from '@/utils/constants'
 import { showLoading, hideLoading, showSuccess, showConfirm } from '@/utils/util'
 
@@ -144,19 +152,37 @@ function goDetail(order) {
   uni.navigateTo({ url: `/provider/order/detail?id=${order.id}` })
 }
 
-async function acceptOrder(order) {
-  const confirmed = await showConfirm('确认接受此订单?')
-  if (!confirmed) return
+// 跳转到上传合同页面
+function goUploadContract(order) {
+  uni.navigateTo({ url: `/provider/contract/upload?orderId=${order.id}` })
+}
 
-  showLoading('提交中...')
-  try {
-    await acceptOrderApi(order.id)
-    hideLoading()
-    showSuccess('已接受订单')
-    fetchOrders(true)
-  } catch (error) {
-    hideLoading()
-  }
+// 跳转到上传施工日志页面
+function goUploadLog(order) {
+  uni.navigateTo({ url: `/provider/log/upload?orderId=${order.id}` })
+}
+
+// 完工申请
+async function handleComplete(order) {
+  uni.showModal({
+    title: '完工确认',
+    content: '确认施工已完成，申请验收？',
+    success: async (res) => {
+      if (res.confirm) {
+        showLoading('提交中...')
+        try {
+          await completeOrder(order.id)
+          hideLoading()
+          uni.showToast({ title: '申请成功', icon: 'success' })
+          fetchOrders(true)
+        } catch (error) {
+          hideLoading()
+          console.error('完工申请失败:', error.message || error)
+          uni.showToast({ title: error.message || '操作失败', icon: 'none' })
+        }
+      }
+    }
+  })
 }
 
 onShow(() => {
@@ -289,5 +315,19 @@ onMounted(() => {
     font-size: $font-size-sm;
     color: #FFFFFF;
   }
+
+  &--secondary {
+    background-color: $bg-gray;
+    margin-right: 16rpx;
+
+    .action-text {
+      color: $text-main;
+    }
+  }
+}
+
+.action-btns {
+  display: flex;
+  align-items: center;
 }
 </style>

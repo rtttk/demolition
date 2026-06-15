@@ -13,11 +13,11 @@
 
     <!-- 2. 订单信息栏 -->
     <view class="order-info-bar">
-      <view class="info-row">
+      <view class="info-col">
         <text class="info-label">订单编号</text>
         <text class="info-value">{{ order.orderNo || '--' }}</text>
       </view>
-      <view class="info-row">
+      <view class="info-col text-right">
         <text class="info-label">创建时间</text>
         <text class="info-value">{{ order.createTime || '--' }}</text>
       </view>
@@ -52,11 +52,11 @@
         <view class="info-grid">
           <view class="info-item">
             <text class="info-label">联系人</text>
-            <text class="info-value">{{ order.contactName || '--' }}</text>
+            <text class="info-value">{{ order.demand?.contactName || '--' }}</text>
           </view>
           <view class="info-item">
             <text class="info-label">联系电话</text>
-            <text class="info-value">{{ order.contactPhone || '--' }}</text>
+            <text class="info-value">{{ order.demand?.contactPhone || '--' }}</text>
             <view class="call-btn" @click="makeCall">
               <text class="call-text">拨打</text>
             </view>
@@ -71,20 +71,36 @@
       <view class="section-body">
         <view class="info-grid">
           <view class="info-item">
+            <text class="info-label">需求标题</text>
+            <text class="info-value">{{ order.demand?.title || '--' }}</text>
+          </view>
+          <view class="info-item">
             <text class="info-label">拆除类型</text>
             <text class="info-value">{{ order.demoTypeName || '--' }}</text>
           </view>
           <view class="info-item">
-            <text class="info-label">施工地址</text>
-            <text class="info-value address-value">{{ order.address || '--' }}</text>
+            <text class="info-label">所在区域</text>
+            <text class="info-value">{{ order.demand?.district || '--' }}</text>
+          </view>
+          <view class="info-item">
+            <text class="info-label">详细地址</text>
+            <text class="info-value address-value">{{ order.demand?.address || '--' }}</text>
           </view>
           <view class="info-item">
             <text class="info-label">拆除面积</text>
-            <text class="info-value">{{ order.area ? order.area + 'm²' : '--' }}</text>
+            <text class="info-value">{{ order.demand?.area ? order.demand.area + 'm²' : '--' }}</text>
+          </view>
+          <view class="info-item" v-if="order.demand?.description">
+            <text class="info-label">需求描述</text>
+            <text class="info-value">{{ order.demand.description }}</text>
           </view>
           <view class="info-item">
             <text class="info-label">合同金额</text>
             <text class="info-value price">¥{{ order.amount || '--' }}</text>
+          </view>
+          <view class="info-item" v-if="order.planStartDate">
+            <text class="info-label">计划开工</text>
+            <text class="info-value">{{ order.planStartDate }}</text>
           </view>
         </view>
       </view>
@@ -98,6 +114,7 @@
           v-for="(log, index) in recentLogs"
           :key="log.id || index"
           class="log-item"
+          @click="goLogDetail(log.id)"
         >
           <view class="log-timeline">
             <view class="log-dot" />
@@ -106,14 +123,14 @@
           <view class="log-content">
             <text class="log-date">{{ log.createTime || '' }}</text>
             <text class="log-text">{{ log.content || '' }}</text>
-            <view v-if="log.images && log.images.length > 0" class="log-images">
+            <view v-if="log.imageUrls && log.imageUrls.length > 0" class="log-images">
               <image
-                v-for="(img, imgIdx) in log.images.slice(0, 3)"
+                v-for="(img, imgIdx) in log.imageUrls.slice(0, 3)"
                 :key="imgIdx"
                 class="log-image"
                 :src="img"
                 mode="aspectFill"
-                @click="previewImage(img, log.images)"
+                @click.stop="previewImage(img, log.imageUrls)"
               />
             </view>
           </view>
@@ -131,13 +148,21 @@
           <text class="message-icon">&#128172;</text>
           <text class="message-title">消息记录</text>
         </view>
-        <text class="message-arrow">></text>
+        <text class="message-arrow" decode>{{ '>' }}</text>
       </view>
     </view>
 
     <!-- 8. 底部操作栏 -->
     <view v-if="showActionBtn" class="bottom-action safe-area-bottom">
-      <view class="action-btn" @click="goUploadLog">
+      <view v-if="order.status === 3" class="action-row">
+        <view class="action-btn action-btn--secondary" @click="goUploadLog">
+          <text class="action-text">登记施工日志</text>
+        </view>
+        <view class="action-btn" @click="handleComplete">
+          <text class="action-text">申请完工</text>
+        </view>
+      </view>
+      <view v-else class="action-btn" @click="goUploadLog">
         <text class="action-text">{{ actionBtnText }}</text>
       </view>
     </view>
@@ -149,7 +174,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { getOrderDetail } from '@/api/order'
+import { getOrderDetail, completeOrder } from '@/api/order'
 import { getConstructionLogs } from '@/api/construction-log'
 import { ORDER_STATUS, ORDER_STATUS_COLOR } from '@/utils/constants'
 import { showLoading, hideLoading, makePhoneCall, previewImage as previewImageUtil } from '@/utils/util'
@@ -160,26 +185,28 @@ const orderId = ref(null)
 const order = ref({})
 const recentLogs = ref([])
 
-// 进度步骤：发布→选标→签约→施工→验收
+// 进度步骤：待审核→待签约→待开工→施工中→待验收→已完成
 const progressSteps = ref([
-  { label: '发布' },
-  { label: '选标' },
-  { label: '签约' },
-  { label: '施工' },
-  { label: '验收' }
+  { label: '待审核' },
+  { label: '待签约' },
+  { label: '待开工' },
+  { label: '施工中' },
+  { label: '待验收' },
+  { label: '已完成' }
 ])
 
 // 当前步骤索引，根据 order.status 映射
 const currentStep = computed(() => {
   const status = order.value.status
-  // status: 0待确认, 1已确认, 2施工中, 3待验收, 4已完成, 5已取消
+  // status: 0待审核 1待签约 2待开工 3施工中 4待验收 5已完成 6已取消
   const map = {
-    0: 0, // 待确认 → 发布
-    1: 1, // 已确认 → 选标
-    2: 3, // 施工中 → 施工
-    3: 4, // 待验收 → 验收
-    4: 4, // 已完成 → 验收
-    5: 0  // 已取消 → 发布
+    0: 0, // 待审核
+    1: 1, // 待签约
+    2: 2, // 待开工
+    3: 3, // 施工中
+    4: 4, // 待验收
+    5: 5, // 已完成
+    6: 0  // 已取消
   }
   return map[status] ?? 0
 })
@@ -197,16 +224,17 @@ const statusText = computed(() => {
 // 是否显示底部操作按钮
 const showActionBtn = computed(() => {
   const status = order.value.status
-  return status === 3 || status === 4
+  // 1待签约可以上传合同，3施工中可以完工或上传日志
+  return status === 1 || status === 3
 })
 
 // 操作按钮文字
 const actionBtnText = computed(() => {
-  if (order.value.status === 3) {
-    return '上传施工日志'
+  if (order.value.status === 1) {
+    return '上传合同'
   }
-  if (order.value.status === 4) {
-    return '上传今日日志'
+  if (order.value.status === 3) {
+    return '完工申请'
   }
   return ''
 })
@@ -245,7 +273,7 @@ async function loadRecentLogs() {
 
 // 拨打电话
 function makeCall() {
-  makePhoneCall(order.value.contactPhone)
+  makePhoneCall(order.value.demand?.contactPhone)
 }
 
 // 预览图片
@@ -258,14 +286,48 @@ function goLogs() {
   uni.navigateTo({ url: `/pages/order/logs?orderId=${orderId.value}` })
 }
 
+// 跳转施工日志详情
+function goLogDetail(logId) {
+  uni.navigateTo({ url: `/provider/log/detail?id=${logId}` })
+}
+
 // 跳转消息详情
 function goMessage() {
   uni.navigateTo({ url: `/pages/message/detail?orderId=${orderId.value}` })
 }
 
-// 跳转上传施工日志
+// 跳转上传施工日志或合同
 function goUploadLog() {
-  uni.navigateTo({ url: `/provider/log/upload?orderId=${orderId.value}` })
+  if (order.value.status === 1) {
+    // 待签约 - 上传合同
+    uni.navigateTo({ url: `/provider/contract/upload?orderId=${orderId.value}` })
+  } else if (order.value.status === 3) {
+    // 施工中 - 登记施工日志
+    uni.navigateTo({ url: `/provider/log/upload?orderId=${orderId.value}` })
+  }
+}
+
+// 完工申请
+async function handleComplete() {
+  uni.showModal({
+    title: '完工确认',
+    content: '确认施工已完成，申请验收？',
+    success: async (res) => {
+      if (res.confirm) {
+        showLoading('提交中...')
+        try {
+          await completeOrder(orderId.value)
+          hideLoading()
+          uni.showToast({ title: '申请成功', icon: 'success' })
+          loadDetail()
+        } catch (error) {
+          hideLoading()
+          console.error('完工申请失败:', error.message || error)
+          uni.showToast({ title: error.message || '操作失败', icon: 'none' })
+        }
+      }
+    }
+  })
 }
 
 onLoad((options) => {
@@ -290,7 +352,7 @@ onLoad((options) => {
 .status-header-inner {
   display: flex;
   flex-direction: column;
-  gap: 16rpx;
+  padding-bottom: 16rpx;
 }
 
 .status-label {
@@ -301,7 +363,7 @@ onLoad((options) => {
 .status-main {
   display: flex;
   align-items: center;
-  gap: 16rpx;
+  padding-left: 16rpx;
 }
 
 .status-name {
@@ -313,16 +375,20 @@ onLoad((options) => {
 // ========== 2. 订单信息栏 ==========
 .order-info-bar {
   background-color: $bg-card;
-  padding: 20rpx 32rpx;
+  padding: 24rpx 32rpx;
   display: flex;
   justify-content: space-between;
   margin-bottom: 20rpx;
 }
 
-.info-row {
+.info-col {
   display: flex;
-  align-items: center;
-  gap: 12rpx;
+  flex-direction: column;
+  padding-bottom: 8rpx;
+
+  &.text-right {
+    text-align: right;
+  }
 }
 
 .info-label {
@@ -421,12 +487,16 @@ onLoad((options) => {
 .info-grid {
   display: flex;
   flex-direction: column;
-  gap: 20rpx;
 }
 
 .info-item {
   display: flex;
   align-items: center;
+  padding-bottom: 20rpx;
+
+  &:last-child {
+    padding-bottom: 0;
+  }
 }
 
 .info-label {
@@ -467,7 +537,6 @@ onLoad((options) => {
 // ========== 6. 施工日志时间线 ==========
 .log-item {
   display: flex;
-  gap: 20rpx;
   padding-bottom: 24rpx;
   position: relative;
 
@@ -482,6 +551,7 @@ onLoad((options) => {
   align-items: center;
   width: 22rpx;
   flex-shrink: 0;
+  margin-right: 20rpx;
 }
 
 .log-dot {
@@ -520,7 +590,6 @@ onLoad((options) => {
 
 .log-images {
   display: flex;
-  gap: 12rpx;
   flex-wrap: wrap;
 }
 
@@ -528,6 +597,12 @@ onLoad((options) => {
   width: 140rpx;
   height: 140rpx;
   border-radius: $radius-sm;
+  margin-right: 12rpx;
+  margin-bottom: 12rpx;
+
+  &:nth-child(3n) {
+    margin-right: 0;
+  }
 }
 
 .empty-hint {
@@ -552,11 +627,11 @@ onLoad((options) => {
 .message-left {
   display: flex;
   align-items: center;
-  gap: 16rpx;
 }
 
 .message-icon {
   font-size: 36rpx;
+  margin-right: 16rpx;
 }
 
 .message-title {
@@ -594,6 +669,24 @@ onLoad((options) => {
     font-size: $font-size-lg;
     font-weight: bold;
     color: #FFFFFF;
+  }
+
+  &--secondary {
+    background-color: $bg-gray;
+    margin-right: 24rpx;
+
+    .action-text {
+      color: $text-main;
+    }
+  }
+}
+
+.action-row {
+  display: flex;
+  align-items: center;
+
+  .action-btn {
+    flex: 1;
   }
 }
 

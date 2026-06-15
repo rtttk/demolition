@@ -69,6 +69,16 @@ export class AdminController {
     return this.adminService.assignUserRoles(userId, targetId, roles);
   }
 
+  @Put('users/:id/team')
+  @ApiOperation({ summary: '为用户关联/取消关联团队' })
+  async assignUserTeam(
+    @CurrentUser('id') userId: string,
+    @Param('id') targetId: string,
+    @Body('teamId') teamId: string,
+  ) {
+    return this.adminService.assignUserTeam(userId, targetId, teamId);
+  }
+
   // ==================== 公司管理 ====================
 
   @Get('companies')
@@ -137,6 +147,49 @@ export class AdminController {
     @Body('status') status: number,
   ) {
     return this.adminService.updateTeamStatus(userId, teamId, status);
+  }
+
+  @Get('teams/all')
+  @ApiOperation({ summary: '获取所有团队简表（用于下拉选择）' })
+  async getAllTeamsSimple() {
+    return this.adminService.getAllTeamsSimple();
+  }
+
+  @Get('teams/:id/members')
+  @ApiOperation({ summary: '获取团队成员列表' })
+  async getTeamMembers(@Param('id') teamId: string) {
+    return this.adminService.getTeamMembers(teamId);
+  }
+
+  @Put('teams/:id/members/:userId/leader')
+  @ApiOperation({ summary: '设置/取消团队队长' })
+  async setTeamLeader(
+    @CurrentUser('id') operatorId: string,
+    @Param('id') teamId: string,
+    @Param('userId') userId: string,
+    @Body('isLeader') isLeader: boolean,
+  ) {
+    return this.adminService.setTeamLeader(operatorId, teamId, userId, isLeader);
+  }
+
+  @Delete('teams/:id/members/:userId')
+  @ApiOperation({ summary: '移除团队成员' })
+  async removeTeamMember(
+    @CurrentUser('id') operatorId: string,
+    @Param('id') teamId: string,
+    @Param('userId') userId: string,
+  ) {
+    return this.adminService.removeTeamMember(operatorId, teamId, userId);
+  }
+
+  @Put('teams/:id/recommended')
+  @ApiOperation({ summary: '设置/取消团队推荐' })
+  async setTeamRecommended(
+    @CurrentUser('id') userId: string,
+    @Param('id') teamId: string,
+    @Body('recommended') recommended: boolean,
+  ) {
+    return this.adminService.setTeamRecommended(userId, teamId, recommended);
   }
 
   // ==================== 需求管理 ====================
@@ -213,6 +266,24 @@ export class AdminController {
     return this.adminService.getOrderList(pagination, filters);
   }
 
+  @Put('orders/:id/approve')
+  @ApiOperation({ summary: '审核订单通过' })
+  async approveOrder(
+    @CurrentUser('id') userId: string,
+    @Param('id') orderId: string,
+  ) {
+    return this.adminService.adminApproveOrder(orderId, userId);
+  }
+
+  @Put('orders/:id/approve-contract')
+  @ApiOperation({ summary: '审核合同通过' })
+  async approveContract(
+    @CurrentUser('id') userId: string,
+    @Param('id') orderId: string,
+  ) {
+    return this.adminService.approveContract(orderId, userId);
+  }
+
   // ==================== 施工日志监控 ====================
 
   @Get('logs')
@@ -248,13 +319,54 @@ export class AdminController {
   }
 
   @Put('cases/:id/status')
-  @ApiOperation({ summary: '审核案例' })
+  @ApiOperation({ summary: '更新案例状态' })
   async updateCaseStatus(
     @CurrentUser('id') userId: string,
     @Param('id') caseId: string,
-    @Body() body: { action: 'passed' | 'rejected' },
+    @Body() body: { action: 'visible' | 'hidden' | 'passed' | 'rejected' },
   ) {
     return this.adminService.updateCaseStatus(userId, caseId, body.action);
+  }
+
+  @Post('cases')
+  @ApiOperation({ summary: '新增案例' })
+  async createCase(
+    @CurrentUser('id') userId: string,
+    @Body() body: {
+      teamId: string;
+      title: string;
+      demoType: number;
+      description?: string;
+      address?: string;
+      area?: string;
+      duration?: number;
+      beforeImageIds?: string[];
+      afterImageIds?: string[];
+      recommended?: boolean;
+    },
+  ) {
+    return this.adminService.createCase(userId, body);
+  }
+
+  @Put('cases/:id')
+  @ApiOperation({ summary: '更新案例' })
+  async updateCase(
+    @CurrentUser('id') userId: string,
+    @Param('id') caseId: string,
+    @Body() body: {
+      title?: string;
+      demoType?: number;
+      description?: string;
+      address?: string;
+      area?: string;
+      duration?: number;
+      beforeImageIds?: string[];
+      afterImageIds?: string[];
+      status?: number;
+      recommended?: boolean;
+    },
+  ) {
+    return this.adminService.updateCase(userId, caseId, body);
   }
 
   // ==================== 合规模板管理 ====================

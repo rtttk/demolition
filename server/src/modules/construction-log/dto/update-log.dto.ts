@@ -16,17 +16,15 @@ export class UpdateLogDto {
   @Type(() => Number)
   progress?: number;
 
-  @ApiPropertyOptional({ description: '图片ID列表', type: [Number] })
+  @ApiPropertyOptional({ description: '图片ID列表' })
   @IsOptional()
   @IsArray()
-  @IsInt({ each: true })
-  @Type(() => Number)
-  imageIds?: number[];
+  @IsString({ each: true })
+  imageIds?: string[];
 
-  @ApiPropertyOptional({ description: '视频ID列表', type: [Number] })
+  @ApiPropertyOptional({ description: '视频ID列表' })
   @IsOptional()
   @IsArray()
-  @IsInt({ each: true })
-  @Type(() => Number)
-  videoIds?: number[];
+  @IsString({ each: true })
+  videoIds?: string[];
 }

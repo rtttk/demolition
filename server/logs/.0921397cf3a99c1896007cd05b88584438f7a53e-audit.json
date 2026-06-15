@@ -1,0 +1,35 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 7
+    },
+    "auditLog": "/Users/yournyk/work/workspaces/chaichu/server/logs/.0921397cf3a99c1896007cd05b88584438f7a53e-audit.json",
+    "files": [
+        {
+            "date": 1781069843741,
+            "name": "/Users/yournyk/work/workspaces/chaichu/server/logs/2026-06-10.log",
+            "hash": "525641473794547f895977dbf2997547bc9dcedb2a9bd7c68c4f0d8aa0f260cc"
+        },
+        {
+            "date": 1781159202350,
+            "name": "/Users/yournyk/work/workspaces/chaichu/server/logs/2026-06-11.log",
+            "hash": "b3bf4489e3f81e010352be33cf5d08e93364ce96395ce95907b367965dd58957"
+        },
+        {
+            "date": 1781226210748,
+            "name": "/Users/yournyk/work/workspaces/chaichu/server/logs/2026-06-12.log",
+            "hash": "002b79e62abb76f0cffcaefd98c6c104823943e35ff93823d1c108f66f906462"
+        },
+        {
+            "date": 1781311102003,
+            "name": "/Users/yournyk/work/workspaces/chaichu/server/logs/2026-06-13.log",
+            "hash": "74a0a0ae1006654ea2dc80dbe67f5dc4defb03680cc5ca53a6d586a818ad4175"
+        },
+        {
+            "date": 1781484516961,
+            "name": "/Users/yournyk/work/workspaces/chaichu/server/logs/2026-06-15.log",
+            "hash": "0401ae7ae345bbb50a142cbe517fcb58c4224a08a03b0d34cd3a758e989bdb67"
+        }
+    ],
+    "hashType": "sha256"
+}

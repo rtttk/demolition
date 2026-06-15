@@ -123,27 +123,44 @@ const recommendCases = ref([
 ])
 
 // 推荐团队
-const recommendTeams = ref([
-  { id: 1, name: '专业拆除队A', avatar: '', specialty: '室内拆除', experience: 8, rating: 4.9, reviewCount: 156, orderCount: 320, completionRate: '99%', onTimeRate: '98%' },
-  { id: 2, name: '极速拆除队', avatar: '', specialty: '店面拆除', experience: 5, rating: 4.8, reviewCount: 98, orderCount: 210, completionRate: '98%', onTimeRate: '97%' }
-])
+const recommendTeams = ref([])
 
 /**
  * 加载推荐数据
  */
 async function loadData() {
   try {
-    //@TODO 
-    // const [casesRes, teamsRes] = await Promise.allSettled([
-      // getRecommendCases({ page: 1, size: 5 }),
-      // getRecommendTeams({ page: 1, size: 5 })
-    // ])
-    // if (casesRes.status === 'fulfilled' && casesRes.value?.data) {
-    //   recommendCases.value = casesRes.value.data.list || casesRes.value.data || recommendCases.value
-    // }
-    // if (teamsRes.status === 'fulfilled' && teamsRes.value?.data) {
-    //   recommendTeams.value = teamsRes.value.data.list || teamsRes.value.data || recommendTeams.value
-    // }
+    const [casesRes, teamsRes] = await Promise.allSettled([
+      getRecommendCases({ page: 1, pageSize: 5 }),
+      getRecommendTeams({ page: 1, pageSize: 5 })
+    ])
+    if (casesRes.status === 'fulfilled' && casesRes.value?.data) {
+      const list = casesRes.value.data.list || casesRes.value.data || []
+      recommendCases.value = list.map(item => {
+        const afterImages = item.afterImageUrls || []
+        return {
+          ...item,
+          coverImage: afterImages[0] || item.coverImage || item.images?.[0] || null,
+          images: [...(item.afterImageUrls || []), ...(item.beforeImageUrls || [])],
+          teamName: item.team?.name || item.teamName || '专业团队'
+        }
+      })
+    }
+    if (teamsRes.status === 'fulfilled' && teamsRes.value?.data) {
+      // 字段映射：后端 -> 前端
+      recommendTeams.value = (teamsRes.value.data.list || teamsRes.value.data || []).map((t) => ({
+        id: t.id,
+        name: t.name,
+        avatar: t.avatar || '',
+        specialty: Array.isArray(t.specialties) ? t.specialties[0] : (t.specialties || '专业拆除'),
+        experience: t.completedCount || 0,
+        rating: t.avgRating || 0,
+        reviewCount: t.reviewCount || 0,
+        orderCount: t.completedCount || 0,
+        completionRate: '100%',
+        onTimeRate: '100%',
+      }))
+    }
   } catch (error) {
     console.error('加载推荐数据失败:', error)
   }

@@ -41,17 +41,17 @@
         <view class="menu-item" @click="goTeamManage">
           <text class="menu-icon">&#128101;</text>
           <text class="menu-label">团队管理</text>
-          <text class="menu-arrow">></text>
+          <text class="menu-arrow" decode>{{ '>' }}</text>
         </view>
         <view class="menu-item" @click="goCompanyManage">
           <text class="menu-icon">&#127970;</text>
           <text class="menu-label">企业管理</text>
-          <text class="menu-arrow">></text>
+          <text class="menu-arrow" decode>{{ '>' }}</text>
         </view>
         <view class="menu-item" @click="goCaseUpload">
           <text class="menu-icon">&#128247;</text>
           <text class="menu-label">上传案例</text>
-          <text class="menu-arrow">></text>
+          <text class="menu-arrow" decode>{{ '>' }}</text>
         </view>
       </view>
 
@@ -59,22 +59,22 @@
         <view class="menu-item" @click="goMessage">
           <text class="menu-icon">&#128276;</text>
           <text class="menu-label">消息通知</text>
-          <text class="menu-arrow">></text>
+          <text class="menu-arrow" decode>{{ '>' }}</text>
         </view>
         <view class="menu-item" @click="goCompliance">
           <text class="menu-icon">&#128220;</text>
           <text class="menu-label">合规知识</text>
-          <text class="menu-arrow">></text>
+          <text class="menu-arrow" decode>{{ '>' }}</text>
         </view>
         <view class="menu-item" @click="goFAQ">
           <text class="menu-icon">&#10067;</text>
           <text class="menu-label">常见问题</text>
-          <text class="menu-arrow">></text>
+          <text class="menu-arrow" decode>{{ '>' }}</text>
         </view>
         <view class="menu-item" @click="goAbout">
           <text class="menu-icon">&#8505;</text>
           <text class="menu-label">关于我们</text>
-          <text class="menu-arrow">></text>
+          <text class="menu-arrow" decode>{{ '>' }}</text>
         </view>
       </view>
 

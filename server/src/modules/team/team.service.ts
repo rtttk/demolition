@@ -206,26 +206,37 @@ export class TeamService {
   async getTeamById(id: string) {
     const team = await this.prisma.team.findUnique({
       where: { id },
-      include: {
-        company: {
-          select: {
-            id: true,
-            name: true,
-            qualification: true,
-            verifyStatus: true,
-          },
-        },
-        _count: {
-          select: { members: true, cases: true, reviews: true },
-        },
-      },
-    } as any);
+    });
 
     if (!team) {
       throw new NotFoundException('团队不存在');
     }
 
-    return this.transformTeam(team);
+    // 手动查询公司信息
+    const company = await this.prisma.company.findUnique({
+      where: { id: team.companyId },
+      select: {
+        id: true,
+        name: true,
+        qualification: true,
+        verifyStatus: true,
+      },
+    });
+
+    // 手动查询关联数量
+    const [caseCount, reviewCount] = await Promise.all([
+      this.prisma.case.count({ where: { teamId: id, status: 1 } }),
+      this.prisma.review.count({ where: { teamId: id, status: 1 } }),
+    ]);
+
+    return this.transformTeam({
+      ...team,
+      company,
+      _count: {
+        cases: caseCount,
+        reviews: reviewCount,
+      },
+    });
   }
 
   /**
@@ -287,16 +298,7 @@ export class TeamService {
         skip: pagination.skip,
         take: pagination.take,
         orderBy: { createdAt: 'desc' },
-        include: {
-          user: {
-            select: {
-              id: true,
-              nickname: true,
-              avatarUrl: true,
-            },
-          },
-        },
-      } as any),
+      }),
       this.prisma.review.count({
         where: {
           teamId: teamId,
@@ -305,8 +307,21 @@ export class TeamService {
       }),
     ]);
 
+    // 手动查询用户信息
+    const userIds = [...new Set(list.map((r) => r.userId).filter(Boolean))];
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, nickname: true, avatarUrl: true },
+    });
+    const userMap = new Map(users.map((u) => [u.id, u]));
+
+    const resultList = list.map((r) => ({
+      ...r,
+      user: userMap.get(r.userId) || null,
+    }));
+
     return {
-      list: list.map((r) => this.transformReview(r)),
+      list: resultList.map((r) => this.transformReview(r)),
       total,
       page: pagination.page,
       pageSize: pagination.pageSize,
@@ -341,6 +356,46 @@ export class TeamService {
 
     return {
       list: list.map((t) => this.transformTeam(t)),
+      total,
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+    };
+  }
+
+  /**
+   * 获取推荐团队（公开）
+   */
+  async getRecommendTeams(pagination: PaginationDto) {
+    const where: any = {
+      recommended: true,
+      status: 1,
+    };
+
+    const [list, total] = await Promise.all([
+      this.prisma.team.findMany({
+        where,
+        skip: pagination.skip,
+        take: pagination.take,
+        orderBy: { createdAt: 'desc' },
+      } as any),
+      this.prisma.team.count({ where }),
+    ]);
+
+    // 手动查询关联的 company 信息
+    const companyIds = [...new Set(list.map((t: any) => t.companyId).filter(Boolean))];
+    const companies = companyIds.length > 0 ? await this.prisma.company.findMany({
+      where: { id: { in: companyIds } },
+      select: { id: true, name: true, verifyStatus: true },
+    }) : [];
+    const companyMap = new Map<string, any>(companies.map((c: any): [string, any] => [c.id, c]));
+
+    const resultList = list.map((t: any) => ({
+      ...this.transformTeam(t),
+      company: companyMap.get(t.companyId) || null,
+    }));
+
+    return {
+      list: resultList,
       total,
       page: pagination.page,
       pageSize: pagination.pageSize,
@@ -383,7 +438,6 @@ export class TeamService {
     }
 
     if (team._count) {
-      result.memberCount = team._count.members;
       result.caseCount = team._count.cases;
       result.reviewCount = team._count.reviews;
     }

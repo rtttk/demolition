@@ -57,9 +57,9 @@ import { PAGE_DEFAULTS } from '@/utils/constants'
 // Tab 配置
 const tabs = ref([
   { label: '全部', value: '' },
-  { label: '待确认', value: 0 },
-  { label: '进行中', value: 2 },
-  { label: '已完成', value: 4 }
+  { label: '待审核', value: 0 },
+  { label: '待开工', value: 2 },
+  { label: '施工中', value: 3 }
 ])
 
 const currentTab = ref(0)
@@ -153,8 +153,12 @@ function goDetail(order) {
  * 操作按钮
  */
 function onAction(order) {
-  if (order.status === 3) {
-    uni.navigateTo({ url: `/pages/order/detail?id=${order.id}` })
+  // status 4 是待验收，触发验收事件让详情页处理
+  if (order.status === 4) {
+    uni.navigateTo({ url: `/pages/order/detail?id=${order.id}&action=accept` })
+  } else if (order.status === 3) {
+    // 施工中状态查看施工日志
+    uni.navigateTo({ url: `/pages/order/logs?orderId=${order.id}` })
   } else {
     goDetail(order)
   }

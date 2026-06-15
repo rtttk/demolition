@@ -22,14 +22,13 @@ export const DEMAND_STATUS = {
 
 // 订单状态
 export const ORDER_STATUS = {
-  0: '待报价',
-  1: '报价中',
-  2: '已推荐报价',
-  3: '已选标',
-  4: '施工中',
-  5: '待验收',
-  6: '已完成',
-  7: '已取消'
+  0: '待审核',
+  1: '待签约',
+  2: '待开工',
+  3: '施工中',
+  4: '待验收',
+  5: '已完成',
+  6: '已取消'
 }
 
 // 报价状态
@@ -88,14 +87,26 @@ export const VERIFY_STATUS_TAG_TYPE = {
 }
 
 export const ORDER_STATUS_TAG_TYPE = {
-  0: 'info',
-  1: 'warning',
-  2: '',
-  3: 'success',
-  4: '',
-  5: 'warning',
-  6: 'success',
-  7: 'danger'
+  0: 'info',    // 待审核
+  1: 'warning', // 待签约
+  2: 'warning', // 待开工
+  3: '',        // 施工中
+  4: 'warning', // 待验收
+  5: 'success', // 已完成
+  6: 'danger'   // 已取消
+}
+
+// 合同状态
+export const CONTRACT_STATUS = {
+  0: '待上传',
+  1: '待审核',
+  2: '已通过'
+}
+
+export const CONTRACT_STATUS_TAG_TYPE = {
+  0: 'info',    // 待上传
+  1: 'warning', // 待审核
+  2: 'success'  // 已通过
 }
 
 // 合规文档分类

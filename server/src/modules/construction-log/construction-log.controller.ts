@@ -60,6 +60,15 @@ export class ConstructionLogController {
   }
 
   /**
+   * 获取施工日志详情
+   */
+  @Get(':id')
+  @ApiOperation({ summary: '获取施工日志详情' })
+  async getById(@Param('id') id: string) {
+    return this.constructionLogService.getById(id);
+  }
+
+  /**
    * 更新施工日志
    */
   @Put(':id')

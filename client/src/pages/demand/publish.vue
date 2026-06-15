@@ -36,7 +36,7 @@
             <text :class="['value-text', { placeholder: !form.district }]">
               {{ form.district || '请选择区域' }}
             </text>
-            <text class="arrow">></text>
+            <text class="arrow" decode>{{ '>' }}</text>
           </view>
         </view>
       </template>
@@ -125,7 +125,7 @@
           <text :class="['value-text', { placeholder: !form.expectedTime }]">
             {{ form.expectedTime || '请选择期望时间' }}
           </text>
-          <text class="arrow">></text>
+          <text class="arrow" decode>{{ '>' }}</text>
         </view>
       </view>
 
@@ -136,7 +136,7 @@
           <text :class="['value-text', { placeholder: !form.budget }]">
             {{ form.budget || '请选择预算范围' }}
           </text>
-          <text class="arrow">></text>
+          <text class="arrow" decode>{{ '>' }}</text>
         </view>
       </view>
     </view>

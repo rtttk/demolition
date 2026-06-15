@@ -80,26 +80,36 @@ export class CaseService {
         skip: pagination.skip,
         take: pagination.take,
         orderBy: { createdAt: 'desc' },
-        include: {
-          team: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          company: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
-      } as any),
+      }),
       this.prisma.case.count({ where }),
     ]);
 
+    // 手动查询关联的 team 和 company 信息
+    const teamIds = [...new Set(list.map((c: any) => c.teamId).filter(Boolean))];
+    const companyIds = [...new Set(list.map((c: any) => c.companyId).filter(Boolean))];
+
+    const [teams, companies] = await Promise.all([
+      teamIds.length > 0 ? this.prisma.team.findMany({
+        where: { id: { in: teamIds } },
+        select: { id: true, name: true },
+      }) : [],
+      companyIds.length > 0 ? this.prisma.company.findMany({
+        where: { id: { in: companyIds } },
+        select: { id: true, name: true },
+      }) : [],
+    ]);
+
+    const teamMap = new Map<string, any>(teams.map((t: any): [string, any] => [t.id, t]));
+    const companyMap = new Map<string, any>(companies.map((c: any): [string, any] => [c.id, c]));
+
+    const resultList = list.map((c: any) => ({
+      ...c,
+      team: teamMap.get(c.teamId) || null,
+      company: companyMap.get(c.companyId) || null,
+    }));
+
     return {
-      list,
+      list: resultList,
       total,
       page: pagination.page,
       pageSize: pagination.pageSize,
@@ -107,10 +117,10 @@ export class CaseService {
   }
 
   /**
-   * 推荐案例（最近5条）
+   * 推荐案例（公开）- 只返回推荐的案例
    */
   async getRecommend(pagination: PaginationDto) {
-    const where: any = { status: 1 };
+    const where: any = { status: 1, recommended: true };
 
     const [list, total] = await Promise.all([
       this.prisma.case.findMany({
@@ -118,26 +128,63 @@ export class CaseService {
         skip: pagination.skip,
         take: pagination.take,
         orderBy: { createdAt: 'desc' },
-        include: {
-          team: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          company: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
       } as any),
       this.prisma.case.count({ where }),
     ]);
 
+    // 手动查询关联的 team 和 company 信息
+    const teamIds = [...new Set(list.map((c: any) => c.teamId).filter(Boolean))];
+    const companyIds = [...new Set(list.map((c: any) => c.companyId).filter(Boolean))];
+
+    const [teams, companies] = await Promise.all([
+      teamIds.length > 0 ? this.prisma.team.findMany({
+        where: { id: { in: teamIds } },
+        select: { id: true, name: true },
+      }) : [],
+      companyIds.length > 0 ? this.prisma.company.findMany({
+        where: { id: { in: companyIds } },
+        select: { id: true, name: true },
+      }) : [],
+    ]);
+
+    const teamMap = new Map<string, any>(teams.map((t: any): [string, any] => [t.id, t]));
+    const companyMap = new Map<string, any>(companies.map((c: any): [string, any] => [c.id, c]));
+
+    // 获取图片URLs
+    const allFileIds = new Set<string>();
+    list.forEach((c: any) => {
+      const beforeIds = (c.beforeImageIds as any[]) || [];
+      const afterIds = (c.afterImageIds as any[]) || [];
+      beforeIds.forEach((id: any) => allFileIds.add(String(id)));
+      afterIds.forEach((id: any) => allFileIds.add(String(id)));
+    });
+
+    let fileUrlMap = new Map<string, string>();
+    if (allFileIds.size > 0) {
+      const files = await this.prisma.file.findMany({
+        where: { id: { in: Array.from(allFileIds) } },
+        select: { id: true, fileUrl: true },
+      });
+      files.forEach((f) => fileUrlMap.set(f.id, f.fileUrl));
+    }
+
+    const resultList = list.map((c: any) => {
+      const beforeIds = (c.beforeImageIds as any[]) || [];
+      const afterIds = (c.afterImageIds as any[]) || [];
+      const beforeImageUrls = beforeIds.map((id: any) => fileUrlMap.get(String(id))).filter(Boolean);
+      const afterImageUrls = afterIds.map((id: any) => fileUrlMap.get(String(id))).filter(Boolean);
+
+      return {
+        ...c,
+        beforeImageUrls,
+        afterImageUrls,
+        team: teamMap.get(c.teamId) || null,
+        company: companyMap.get(c.companyId) || null,
+      };
+    });
+
     return {
-      list,
+      list: resultList,
       total,
       page: pagination.page,
       pageSize: pagination.pageSize,
@@ -150,25 +197,23 @@ export class CaseService {
   async findById(id: string) {
     const c = await this.prisma.case.findUnique({
       where: { id },
-      include: {
-        team: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        company: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
     } as any);
 
     if (!c) {
       throw new NotFoundException('案例不存在');
     }
+
+    // 手动查询关联的 team 和 company 信息
+    const [team, company] = await Promise.all([
+      c.teamId ? this.prisma.team.findUnique({
+        where: { id: c.teamId },
+        select: { id: true, name: true },
+      }) : null,
+      c.companyId ? this.prisma.company.findUnique({
+        where: { id: c.companyId },
+        select: { id: true, name: true },
+      }) : null,
+    ]);
 
     // 增加浏览量
     await this.prisma.case.update({
@@ -176,6 +221,27 @@ export class CaseService {
       data: { viewCount: { increment: 1 } },
     });
 
-    return c;
+    // 获取图片URLs
+    const beforeIds = (c.beforeImageIds as any[]) || [];
+    const afterIds = (c.afterImageIds as any[]) || [];
+    const allFileIds = [...beforeIds, ...afterIds].map((id: any) => String(id));
+    let fileUrlMap = new Map<string, string>();
+    if (allFileIds.length > 0) {
+      const files = await this.prisma.file.findMany({
+        where: { id: { in: allFileIds } },
+        select: { id: true, fileUrl: true },
+      });
+      files.forEach((f) => fileUrlMap.set(f.id, f.fileUrl));
+    }
+    const beforeImageUrls = beforeIds.map((id: any) => fileUrlMap.get(String(id))).filter(Boolean);
+    const afterImageUrls = afterIds.map((id: any) => fileUrlMap.get(String(id))).filter(Boolean);
+
+    return {
+      ...c,
+      beforeImageUrls,
+      afterImageUrls,
+      team,
+      company,
+    };
   }
 }

@@ -93,7 +93,7 @@ async function checkLog() {
   try {
     const res = await checkTodayLog(orderId.value)
     const data = res.data || res
-    if (data?.uploaded || data?.exists) {
+    if (data?.exists) {
       // 今日已上传日志，加载已有数据
       if (data.log) {
         const log = data.log

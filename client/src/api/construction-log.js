@@ -20,6 +20,14 @@ export function getConstructionLogs(params) {
 }
 
 /**
+ * 获取施工日志详情
+ * @param {string} id - 日志ID
+ */
+export function getConstructionLogDetail(id) {
+  return get(`/construction-logs/${id}`)
+}
+
+/**
  * 检查今日是否已上传日志
  * @param {number|string} orderId
  */

@@ -52,16 +52,43 @@ const actionText = computed(() => {
   const status = props.order.status
   const map = {
     0: '去确认',
-    2: '查看日志',
-    3: '去验收',
-    4: '查看评价',
-    5: '已取消'
+    1: '查看详情',
+    2: '查看详情',
+    3: '查看日志',
+    4: '去验收',
+    5: '查看评价',
+    6: '查看详情'
   }
   return map[status] || '查看详情'
 })
 
 function onAction() {
-  // 触发操作事件
+  const status = props.order.status
+  const orderId = props.order.id
+
+  switch (status) {
+    case 0:
+    case 1:
+    case 2:
+    case 6:
+      // 待审核/待签约/待开工/已取消 → 跳转详情
+      uni.navigateTo({ url: `/pages/order/detail?id=${orderId}` })
+      break
+    case 3:
+      // 施工中 → 跳转施工日志列表
+      uni.navigateTo({ url: `/pages/order/logs?orderId=${orderId}` })
+      break
+    case 4:
+      // 待验收 → 跳转详情并触发验收
+      uni.navigateTo({ url: `/pages/order/detail?id=${orderId}&action=accept` })
+      break
+    case 5:
+      // 已完成 → 跳转评价页
+      uni.navigateTo({ url: `/pages/order/review?orderId=${orderId}` })
+      break
+    default:
+      uni.navigateTo({ url: `/pages/order/detail?id=${orderId}` })
+  }
 }
 </script>
 

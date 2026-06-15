@@ -5,6 +5,15 @@ import { UpdateLogDto } from './dto/update-log.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { EventLogService } from '../event-log/event-log.service';
 
+/**
+ * 解析 Prisma Json 类型字段为字符串数组
+ * Prisma 的 Json 类型在 TS 中被推断为 JsonValue，需要类型断言
+ */
+function parseJsonArray(value: unknown): string[] {
+  if (!value || !Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === 'string');
+}
+
 
 @Injectable()
 export class ConstructionLogService {
@@ -16,6 +25,7 @@ export class ConstructionLogService {
   /**
    * 创建施工日志（服务方）
    * 如果当天已有日志则更新
+   * 只有施工中(状态3)的订单才能登记日志
    */
   async create(userId: string, data: CreateLogDto) {
     // 查找订单并验证用户是关联团队的人员
@@ -28,12 +38,17 @@ export class ConstructionLogService {
       throw new NotFoundException('订单不存在');
     }
 
+    // 检查订单状态，只有施工中(状态3)才能登记日志
+    if (order.status !== 3) {
+      throw new ForbiddenException('当前订单状态不允许登记施工日志，请等待开工');
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { teamId: true },
     });
 
-    if (!user || Number(user.teamId) !== Number(order.teamId)) {
+    if (!user || user.teamId !== order.teamId) {
       throw new ForbiddenException('您不是该订单关联团队的人员');
     }
 
@@ -112,7 +127,51 @@ export class ConstructionLogService {
       this.prisma.constructionLog.count({ where }),
     ]);
 
-    return {list,
+    // 查询所有日志关联的图片信息
+    const allImageIds: string[] = [];
+    const allVideoIds: string[] = [];
+    list.forEach(log => {
+      const imageIds = parseJsonArray(log.imageIds);
+      const videoIds = parseJsonArray(log.videoIds);
+      if (imageIds.length > 0) {
+        allImageIds.push(...imageIds);
+      }
+      if (videoIds.length > 0) {
+        allVideoIds.push(...videoIds);
+      }
+    });
+
+    const [images, videos] = await Promise.all([
+      allImageIds.length > 0
+        ? this.prisma.file.findMany({
+            where: { id: { in: allImageIds } },
+            select: { id: true, fileUrl: true },
+          })
+        : [],
+      allVideoIds.length > 0
+        ? this.prisma.file.findMany({
+            where: { id: { in: allVideoIds } },
+            select: { id: true, fileUrl: true },
+          })
+        : [],
+    ]);
+
+    const imageMap = new Map<string, string>((images as { id: string; fileUrl: string }[]).map((img) => [img.id, img.fileUrl] as [string, string]));
+    const videoMap = new Map<string, string>((videos as { id: string; fileUrl: string }[]).map((v) => [v.id, v.fileUrl] as [string, string]));
+
+    // 转换数据，添加 imageUrls 和 videoUrls
+    const transformedList = list.map(log => {
+      const imageIds = parseJsonArray(log.imageIds);
+      const videoIds = parseJsonArray(log.videoIds);
+      return {
+        ...log,
+        imageUrls: imageIds.map((id: string) => imageMap.get(id)).filter(Boolean),
+        videoUrls: videoIds.map((id: string) => videoMap.get(id)).filter(Boolean),
+      };
+    });
+
+    return {
+      list: transformedList,
       total,
       page: pagination.page,
       pageSize: pagination.pageSize,
@@ -120,20 +179,97 @@ export class ConstructionLogService {
   }
 
   /**
+   * 获取施工日志详情
+   */
+  async getById(logId: string) {
+    const log = await this.prisma.constructionLog.findUnique({
+      where: { id: logId },
+    });
+
+    if (!log) {
+      throw new NotFoundException('施工日志不存在');
+    }
+
+    // 查询图片和视频信息
+    const imageIds = parseJsonArray(log.imageIds);
+    const videoIds = parseJsonArray(log.videoIds);
+
+    const [images, videos] = await Promise.all([
+      imageIds.length > 0
+        ? this.prisma.file.findMany({
+            where: { id: { in: imageIds } },
+            select: { id: true, fileUrl: true },
+          })
+        : [],
+      videoIds.length > 0
+        ? this.prisma.file.findMany({
+            where: { id: { in: videoIds } },
+            select: { id: true, fileUrl: true },
+          })
+        : [],
+    ]);
+
+    const imageMap = new Map<string, string>((images as { id: string; fileUrl: string }[]).map((img) => [img.id, img.fileUrl] as [string, string]));
+    const videoMap = new Map<string, string>((videos as { id: string; fileUrl: string }[]).map((v) => [v.id, v.fileUrl] as [string, string]));
+
+    return {
+      ...log,
+      imageUrls: imageIds.map((id: string) => imageMap.get(id)).filter(Boolean),
+      videoUrls: videoIds.map((id: string) => videoMap.get(id)).filter(Boolean),
+    };
+  }
+
+  /**
    * 检查今日是否已提交日志
    */
   async checkToday(orderId: string) {
-    const logDate = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0];
+    const startOfDay = new Date(today + 'T00:00:00.000Z');
+    const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
 
     const log = await this.prisma.constructionLog.findFirst({
       where: {
         orderId: orderId,
-        logDate: new Date(logDate),
+        logDate: {
+          gte: startOfDay,
+          lt: endOfDay,
+        },
       },
     });
 
-    return {exists: !!log,
-      log: log || null,
+    if (!log) {
+      return { exists: false, log: null };
+    }
+
+    // 查询图片和视频信息
+    const imageIds = parseJsonArray(log.imageIds);
+    const videoIds = parseJsonArray(log.videoIds);
+
+    const [images, videos] = await Promise.all([
+      imageIds.length > 0
+        ? this.prisma.file.findMany({
+            where: { id: { in: imageIds } },
+            select: { id: true, fileUrl: true },
+          })
+        : [],
+      videoIds.length > 0
+        ? this.prisma.file.findMany({
+            where: { id: { in: videoIds } },
+            select: { id: true, fileUrl: true },
+          })
+        : [],
+    ]);
+
+    const imageMap = new Map<string, string>((images as { id: string; fileUrl: string }[]).map((img) => [img.id, img.fileUrl] as [string, string]));
+    const videoMap = new Map<string, string>((videos as { id: string; fileUrl: string }[]).map((v) => [v.id, v.fileUrl] as [string, string]));
+
+    return {
+      exists: true,
+      log: {
+        ...log,
+        imageUrls: imageIds.map((id: string) => imageMap.get(id)).filter(Boolean),
+        videoUrls: videoIds.map((id: string) => videoMap.get(id)).filter(Boolean),
+      },
     };
   }
 

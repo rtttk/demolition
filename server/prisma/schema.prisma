@@ -4,8 +4,21 @@ generator client {
 
 datasource db {
   provider = "mysql"
-  url      = "mysql://root:@localhost:3306/demolition"
+  url      = env("DATABASE_URL")
 }
+
+// ==================== 枚举值定义 ====================
+// 性别: 0=未知 1=男 2=女
+// 角色: 1=需求方 2=服务方 3=平台运营
+// 资质等级: 1=初级 2=中级 3=高级 4=特级
+// 认证状态: 0=待认证 1=已认证 2=未通过
+// 通用状态: 0=禁用 1=启用
+// 拆除类型: 1=室内拆除 2=建筑拆除 3=工业拆除
+// 订单状态: 0=待审核 1=待签约 2=待开工 3=施工中 4=待验收 5=已完成 6=已取消
+// 合同状态: 0=待上传 1=待审核 2=已通过
+// 报价状态: 0=待审核 1=已通过 2=未通过
+// 文件类型: 1=图片 2=视频 3=文档 4=其他
+// 消息发送者角色: 1=需求方 2=服务方 3=平台运营
 
 // ==================== 用户与组织 ====================
 
@@ -13,25 +26,25 @@ model User {
   id                String     @id @default(cuid()) @db.VarChar(64)
   openId            String?    @unique @map("open_id")
   unionId           String?    @unique @map("union_id")
-  phone             String?
-  nickname          String?
-  avatarUrl         String?    @map("avatar_url")
-  roles             Json       @default("[1]") // 角色数组：1=需求方 2=服务方 3=平台运营
-  roleBackup        Int?       @map("role_backup") // 临时保留旧字段，迁移后删除
-  currentRole       Int        @default(1) @map("current_role") // 记住用户上次选择的角色
-  realName          String?    @map("real_name")
-  gender            Int?       // 0=未知 1=男 2=女
-  age               Int?
-  idCardNo          String?    @map("id_card_no")
-  idCardImages      Json?      @map("id_card_images")
-  qualificationLevel Int?      @map("qualification_level") // 1=初级 2=中级 3=高级 4=特级
-  workYears         Int?       @map("work_years")
-  teamId            String?    @map("team_id")
-  isTeamAdmin       Boolean    @default(false) @map("is_team_admin")
-  passwordHash      String?    @map("password_hash")
-  secretKey         String?    @map("secret_key")
-  status            Int        @default(1)
-  lastLoginAt       DateTime?  @map("last_login_at")
+  phone             String?                                           // 手机号
+  nickname          String?                                           // 昵称
+  avatarUrl         String?    @map("avatar_url")                     // 头像URL
+  roles             Json       @default("[1]")                        // 角色数组: 1=需求方 2=服务方 3=平台运营
+  roleBackup        Int?       @map("role_backup")                    // 临时保留旧字段
+  currentRole       Int        @default(1) @map("current_role")       // 当前角色: 1=需求方 2=服务方 3=平台运营
+  realName          String?    @map("real_name")                       // 真实姓名
+  gender            Int?                                                // 性别: 0=未知 1=男 2=女
+  age               Int?                                                // 年龄
+  idCardNo          String?    @map("id_card_no")                      // 身份证号
+  idCardImages      Json?      @map("id_card_images")                  // 身份证图片
+  qualificationLevel Int?      @map("qualification_level")            // 资质等级: 1=初级 2=中级 3=高级 4=特级
+  workYears         Int?       @map("work_years")                      // 工作年限
+  teamId            String?    @map("team_id")                         // 所属团队ID
+  isTeamAdmin       Boolean    @default(false) @map("is_team_admin")  // 是否为团队管理员
+  passwordHash      String?    @map("password_hash")                   // 密码哈希
+  secretKey         String?    @map("secret_key")                      // 密钥
+  status            Int        @default(1)                             // 状态: 0=禁用 1=启用
+  lastLoginAt       DateTime?  @map("last_login_at")                   // 最后登录时间
   createdAt         DateTime   @default(now()) @map("created_at")
   updatedAt         DateTime   @updatedAt @map("updated_at")
 
@@ -42,23 +55,23 @@ model User {
 
 model Company {
   id              String     @id @default(cuid()) @db.VarChar(64)
-  name            String
-  contactPerson   String     @map("contact_person")
-  contactPhone    String     @map("contact_phone")
-  licenseNo       String?    @map("license_no")
-  licenseImages   Json?      @map("license_images")
-  qualification   String?
-  qualificationImages Json?   @map("qualification_images")
-  safetyCertNo    String?    @map("safety_cert_no")
-  safetyCertImages Json?     @map("safety_cert_images")
-  establishedAt   DateTime?  @map("established_at")
-  description     String?
-  serviceArea     String?    @map("service_area")
-  completedCount  Int        @default(0) @map("completed_count")
-  teamCount       Int        @default(0) @map("team_count")
-  verifyStatus    Int        @default(0) @map("verify_status")
-  verifyRemark   String?    @map("verify_remark")
-  status          Int        @default(1)
+  name            String                                               // 公司名称
+  contactPerson   String     @map("contact_person")                   // 联系人
+  contactPhone    String     @map("contact_phone")                   // 联系电话
+  licenseNo       String?    @map("license_no")                       // 营业执照号
+  licenseImages   Json?      @map("license_images")                  // 营业执照图片
+  qualification   String?                                              // 资质等级
+  qualificationImages Json?   @map("qualification_images")           // 资质证书图片
+  safetyCertNo    String?    @map("safety_cert_no")                  // 安全许可证号
+  safetyCertImages Json?     @map("safety_cert_images")             // 安全许可证图片
+  establishedAt   DateTime?  @map("established_at")                  // 成立日期
+  description     String?                                              // 公司描述
+  serviceArea     String?    @map("service_area")                    // 服务区域
+  completedCount  Int        @default(0) @map("completed_count")     // 已完成订单数
+  teamCount       Int        @default(0) @map("team_count")         // 团队数量
+  verifyStatus    Int        @default(0) @map("verify_status")      // 认证状态: 0=待认证 1=已认证 2=未通过
+  verifyRemark   String?    @map("verify_remark")                    // 认证备注
+  status          Int        @default(1)                             // 状态: 0=禁用 1=启用
   createdAt       DateTime   @default(now()) @map("created_at")
   updatedAt       DateTime   @updatedAt @map("updated_at")
 
@@ -68,9 +81,9 @@ model Company {
 
 model CompanyAdmin {
   id        String    @id @default(cuid()) @db.VarChar(64)
-  companyId String    @map("company_id")
-  userId    String    @map("user_id")
-  role      Int       @default(1)
+  companyId String    @map("company_id")                         // 公司ID
+  userId    String    @map("user_id")                           // 用户ID
+  role      Int       @default(1)                               // 角色: 1=管理员
   createdAt DateTime  @default(now()) @map("created_at")
 
   @@unique([companyId, userId])
@@ -80,20 +93,21 @@ model CompanyAdmin {
 
 model Team {
   id              String     @id @default(cuid()) @db.VarChar(64)
-  companyId       String     @map("company_id")
-  name            String
-  leaderAName     String     @map("leader_a_name")
-  leaderAPhone    String     @map("leader_a_phone")
-  leaderBName     String?    @map("leader_b_name")
-  leaderBPhone    String?    @map("leader_b_phone")
-  teamSize        Int        @default(1) @map("team_size")
-  specialties     String?
-  description     String?
-  serviceArea     String?    @map("service_area")
-  completedCount  Int        @default(0) @map("completed_count")
-  avgRating       Decimal    @default(0.0) @db.Decimal(2, 1) @map("avg_rating")
-  reviewCount     Int        @default(0) @map("review_count")
-  status          Int        @default(1)
+  companyId       String     @map("company_id")                     // 所属公司ID
+  name            String                                               // 团队名称
+  leaderAName     String     @map("leader_a_name")                   // 负责人A姓名
+  leaderAPhone    String     @map("leader_a_phone")                  // 负责人A电话
+  leaderBName     String?    @map("leader_b_name")                    // 负责人B姓名
+  leaderBPhone    String?    @map("leader_b_phone")                  // 负责人B电话
+  teamSize        Int        @default(1) @map("team_size")         // 团队规模
+  specialties     String?                                              // 擅长领域
+  description     String?                                              // 团队描述
+  serviceArea     String?    @map("service_area")                    // 服务区域
+  completedCount  Int        @default(0) @map("completed_count")   // 已完成订单数
+  avgRating       Decimal    @default(0.0) @db.Decimal(2, 1) @map("avg_rating") // 平均评分
+  reviewCount     Int        @default(0) @map("review_count")       // 评价数量
+  recommended     Boolean    @default(false) @map("recommended")    // 是否推荐
+  status          Int        @default(1)                             // 状态: 0=禁用 1=启用
   createdAt       DateTime   @default(now()) @map("created_at")
   updatedAt       DateTime   @updatedAt @map("updated_at")
 
@@ -105,28 +119,28 @@ model Team {
 
 model Demand {
   id              String     @id @default(cuid()) @db.VarChar(64)
-  demandNo        String     @unique @map("demand_no")
-  userId          String     @map("user_id")
-  demoType        Int        @map("demo_type")
-  title           String
-  description     String?
-  address         String?
-  district        String?
-  communityName   String?    @map("community_name") // 小区名称(室内拆除时填写)
-  longitude       Decimal?   @db.Decimal(10, 7)
-  latitude        Decimal?   @db.Decimal(10, 7)
-  area            Decimal?   @db.Decimal(10, 2)
-  contactName     String?    @map("contact_name")  // 联系人
-  contactPhone    String?    @map("contact_phone") // 联系电话
-  budget          String?    @map("budget")        // 预算范围(标签)
-  expectedTime    String?    @map("expected_time")
-  imageIds        Json?      @map("image_ids")
-  status          Int        @default(0)
-  selectedQuoteIds Json?     @map("selected_quote_ids")
-  quoteCount      Int        @default(0) @map("quote_count")
-  viewCount       Int        @default(0) @map("view_count")
-  expiredAt       DateTime?  @map("expired_at")
-  completedAt     DateTime?  @map("completed_at")
+  demandNo        String     @unique @map("demand_no")               // 需求编号
+  userId          String     @map("user_id")                         // 发布用户ID
+  demoType        Int        @map("demo_type")                       // 拆除类型: 1=室内拆除 2=建筑拆除 3=工业拆除
+  title           String                                               // 需求标题
+  description     String?                                              // 需求描述
+  address         String?                                              // 地址
+  district        String?                                              // 区域
+  communityName   String?    @map("community_name")                  // 小区名称
+  longitude       Decimal?   @db.Decimal(10, 7)                       // 经度
+  latitude        Decimal?   @db.Decimal(10, 7)                      // 纬度
+  area            Decimal?   @db.Decimal(10, 2)                      // 面积(平方米)
+  contactName     String?    @map("contact_name")                    // 联系人
+  contactPhone    String?    @map("contact_phone")                   // 联系电话
+  budget          String?    @map("budget")                          // 预算范围
+  expectedTime    String?    @map("expected_time")                   // 期望时间
+  imageIds        Json?      @map("image_ids")                       // 图片ID数组
+  status          Int        @default(0)                             // 状态: 0=待审核 1=已发布 2=已关闭
+  selectedQuoteIds Json?     @map("selected_quote_ids")              // 选中的报价ID数组
+  quoteCount      Int        @default(0) @map("quote_count")         // 报价数量
+  viewCount       Int        @default(0) @map("view_count")          // 浏览次数
+  expiredAt       DateTime?  @map("expired_at")                      // 过期时间
+  completedAt     DateTime?  @map("completed_at")                    // 完成时间
   createdAt       DateTime   @default(now()) @map("created_at")
   updatedAt       DateTime   @updatedAt @map("updated_at")
 
@@ -140,18 +154,18 @@ model Demand {
 
 model Quote {
   id            String     @id @default(cuid()) @db.VarChar(64)
-  quoteNo       String     @unique @map("quote_no")
-  demandId      String     @map("demand_id")
-  teamId        String     @map("team_id")
-  companyId     String     @map("company_id")
-  price         Decimal    @db.Decimal(12, 2)
-  duration      Int?
-  planSummary   String     @map("plan_summary")
-  remark        String?
-  status        Int        @default(0)
-  reviewRemark  String?    @map("review_remark")
-  reviewedAt    DateTime?  @map("reviewed_at")
-  reviewedBy    String?     @map("reviewed_by")
+  quoteNo       String     @unique @map("quote_no")                 // 报价编号
+  demandId      String     @map("demand_id")                       // 需求ID
+  teamId        String     @map("team_id")                         // 团队ID
+  companyId     String     @map("company_id")                       // 公司ID
+  price         Decimal    @db.Decimal(12, 2)                      // 报价金额
+  duration      Int?                                                // 预计工期(天)
+  planSummary   String     @map("plan_summary")                    // 方案摘要
+  remark        String?                                              // 备注
+  status        Int        @default(0)                             // 状态: 0=待审核 1=已通过 2=未通过
+  reviewRemark  String?    @map("review_remark")                    // 审核备注
+  reviewedAt    DateTime?  @map("reviewed_at")                      // 审核时间
+  reviewedBy    String?    @map("reviewed_by")                      // 审核人ID
   createdAt     DateTime   @default(now()) @map("created_at")
   updatedAt     DateTime   @updatedAt @map("updated_at")
 
@@ -166,19 +180,23 @@ model Quote {
 
 model Order {
   id            String     @id @default(cuid()) @db.VarChar(64)
-  orderNo       String     @unique @map("order_no")
-  demandId      String     @unique @map("demand_id")
-  userId        String     @map("user_id")
-  teamId        String     @map("team_id")
-  companyId     String     @map("company_id")
-  quoteIds      Json       @map("quote_ids")
-  finalPrice    Decimal?   @db.Decimal(12, 2) @map("final_price")
-  status        Int        @default(0)
-  confirmedAt   DateTime?  @map("confirmed_at")
-  startedAt     DateTime?  @map("started_at")
-  completedAt   DateTime?  @map("completed_at")
-  acceptedAt    DateTime?  @map("accepted_at")
-  createdBy     String     @map("created_by")
+  orderNo       String     @unique @map("order_no")                 // 订单编号
+  demandId      String     @unique @map("demand_id")                // 需求ID
+  userId        String     @map("user_id")                           // 需求方用户ID
+  teamId        String     @map("team_id")                          // 团队ID
+  companyId     String     @map("company_id")                        // 公司ID
+  quoteIds      Json       @map("quote_ids")                       // 选中的报价ID数组
+  finalPrice    Decimal?   @db.Decimal(12, 2) @map("final_price")  // 最终成交价
+  status        Int        @default(0)                             // 状态: 0=待审核 1=待签约 2=待开工 3=施工中 4=待验收 5=已完成 6=已取消
+  confirmedAt   DateTime?  @map("confirmed_at")                      // 确认时间
+  startedAt     DateTime?  @map("started_at")                        // 开工时间
+  completedAt   DateTime?  @map("completed_at")                    // 完成时间
+  acceptedAt    DateTime?  @map("accepted_at")                      // 验收时间
+  createdBy     String     @map("created_by")                       // 创建人ID
+  contractId    String?    @map("contract_id")                      // 合同文件ID
+  contractStatus Int       @default(0) @map("contract_status")     // 合同状态: 0=待上传 1=待审核 2=已通过
+  signedAt      DateTime?  @map("signed_at")                        // 签约时间
+  planStartDate DateTime?  @map("plan_start_date")                  // 计划开工日期
   createdAt     DateTime   @default(now()) @map("created_at")
   updatedAt     DateTime   @updatedAt @map("updated_at")
 
@@ -192,16 +210,16 @@ model Order {
 
 model ConstructionLog {
   id            String    @id @default(cuid()) @db.VarChar(64)
-  orderId       String    @map("order_id")
-  teamId        String    @map("team_id")
-  logDate       DateTime  @map("log_date")
-  content       String
-  progress      Int?
-  workers       Int?
-  imageIds      Json?     @map("image_ids")
-  videoIds      Json?     @map("video_ids")
-  isAbnormal    Boolean   @default(false) @map("is_abnormal")
-  abnormalDesc  String?   @map("abnormal_desc")
+  orderId       String    @map("order_id")                         // 订单ID
+  teamId        String    @map("team_id")                          // 团队ID
+  logDate       DateTime  @map("log_date")                         // 日志日期
+  content       String                                               // 日志内容
+  progress      Int?                                                // 施工进度(百分比)
+  workers       Int?                                                // 施工人数
+  imageIds      Json?     @map("image_ids")                       // 图片ID数组
+  videoIds      Json?     @map("video_ids")                       // 视频ID数组
+  isAbnormal    Boolean   @default(false) @map("is_abnormal")     // 是否异常
+  abnormalDesc  String?   @map("abnormal_desc")                    // 异常描述
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
@@ -215,13 +233,13 @@ model ConstructionLog {
 
 model Message {
   id          String    @id @default(cuid()) @db.VarChar(64)
-  orderId     String    @map("order_id")
-  senderId    String    @map("sender_id")
-  senderRole  Int       @map("sender_role")
-  receiverId  String    @map("receiver_id")
-  content     String?
-  imageIds    Json?     @map("image_ids")
-  isRead      Boolean   @default(false) @map("is_read")
+  orderId     String    @map("order_id")                           // 订单ID
+  senderId    String    @map("sender_id")                          // 发送者ID
+  senderRole  Int       @map("sender_role")                        // 发送者角色: 1=需求方 2=服务方 3=平台运营
+  receiverId  String    @map("receiver_id")                        // 接收者ID
+  content     String?                                              // 消息内容
+  imageIds    Json?     @map("image_ids")                          // 图片ID数组
+  isRead      Boolean   @default(false) @map("is_read")          // 是否已读
   createdAt   DateTime  @default(now()) @map("created_at")
 
   @@index([orderId])
@@ -232,14 +250,14 @@ model Message {
 
 model Review {
   id            String    @id @default(cuid()) @db.VarChar(64)
-  orderId       String    @unique @map("order_id")
-  userId        String    @map("user_id")
-  teamId        String    @map("team_id")
-  rating        Int
-  content       String?
-  imageIds      Json?     @map("image_ids")
-  replyContent  String?   @map("reply_content")
-  status        Int       @default(1)
+  orderId       String    @unique @map("order_id")                   // 订单ID
+  userId        String    @map("user_id")                           // 评价用户ID
+  teamId        String    @map("team_id")                           // 被评价团队ID
+  rating        Int                                                  // 评分(1-5)
+  content       String?                                              // 评价内容
+  imageIds      Json?     @map("image_ids")                         // 图片ID数组
+  replyContent  String?   @map("reply_content")                    // 商家回复内容
+  status        Int       @default(1)                                // 状态: 0=隐藏 1=显示
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
@@ -251,39 +269,41 @@ model Review {
 
 model Case {
   id              String     @id @default(cuid()) @db.VarChar(64)
-  teamId          String     @map("team_id")
-  companyId       String     @map("company_id")
-  title           String
-  demoType        Int        @map("demo_type")
-  description     String?
-  address         String?
-  area            Decimal?   @db.Decimal(10, 2)
-  duration        Int?
-  beforeImageIds  Json?      @map("before_image_ids")
-  afterImageIds   Json?      @map("after_image_ids")
-  status          Int        @default(0)
-  viewCount       Int        @default(0) @map("view_count")
+  teamId          String     @map("team_id")                         // 团队ID
+  companyId       String     @map("company_id")                     // 公司ID
+  title           String                                               // 案例标题
+  demoType        Int        @map("demo_type")                       // 拆除类型: 1=室内拆除 2=建筑拆除 3=工业拆除
+  description     String?                                              // 案例描述
+  address         String?                                              // 地址
+  area            Decimal?   @db.Decimal(10, 2)                     // 面积(平方米)
+  duration        Int?                                                // 工期(天)
+  beforeImageIds  Json?      @map("before_image_ids")                // 施工前图片ID数组
+  afterImageIds   Json?      @map("after_image_ids")                 // 施工后图片ID数组
+  status          Int        @default(0)                              // 状态: 0=待审核 1=已通过
+  recommended     Boolean    @default(false) @map("recommended")    // 是否推荐
+  viewCount       Int        @default(0) @map("view_count")          // 浏览次数
   createdAt       DateTime   @default(now()) @map("created_at")
   updatedAt       DateTime   @updatedAt @map("updated_at")
 
   @@index([teamId])
   @@index([companyId])
   @@index([demoType])
+  @@index([recommended])
   @@map("cases")
 }
 
 model File {
   id          String    @id @default(cuid()) @db.VarChar(64)
-  fileType    Int       @map("file_type")
-  fileName    String    @map("file_name")
-  fileUrl     String    @map("file_url")
-  fileSize    Int?      @map("file_size")
-  mimeType    String?   @map("mime_type")
-  width       Int?
-  height      Int?
-  duration    Int?
-  sortOrder   Int       @default(0) @map("sort_order")
-  uploaderId  String?     @map("uploader_id")
+  fileType    Int       @map("file_type")                          // 文件类型: 1=图片 2=视频 3=文档 4=其他
+  fileName    String    @map("file_name")                          // 文件名
+  fileUrl     String    @map("file_url")                           // 文件URL
+  fileSize    Int?      @map("file_size")                          // 文件大小(字节)
+  mimeType    String?   @map("mime_type")                         // MIME类型
+  width       Int?                                                // 宽度(图片/视频)
+  height      Int?                                                // 高度(图片/视频)
+  duration    Int?                                                // 时长(视频)
+  sortOrder   Int       @default(0) @map("sort_order")            // 排序
+  uploaderId  String?   @map("uploader_id")                        // 上传者ID
   createdAt   DateTime  @default(now()) @map("created_at")
 
   @@index([uploaderId])
@@ -294,13 +314,13 @@ model File {
 
 model ComplianceDoc {
   id          String    @id @default(cuid()) @db.VarChar(64)
-  title       String
-  category    String
-  description String?
-  fileId      Int?      @map("file_id")
-  fileUrl     String?   @map("file_url")
-  sortOrder   Int       @default(0) @map("sort_order")
-  status      Int       @default(1)
+  title       String                                               // 文档标题
+  category    String                                               // 分类
+  description String?                                              // 描述
+  fileId      Int?      @map("file_id")                            // 文件ID
+  fileUrl     String?   @map("file_url")                           // 文件URL
+  sortOrder   Int       @default(0) @map("sort_order")            // 排序
+  status      Int       @default(1)                                // 状态: 0=禁用 1=启用
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
@@ -310,12 +330,12 @@ model ComplianceDoc {
 
 model EventLog {
   id          String    @id @default(cuid()) @db.VarChar(64)
-  bizType     String    @map("biz_type")
-  bizId       String    @map("biz_id")
-  eventType   String    @map("event_type")
-  operatorId  String?   @map("operator_id") @db.VarChar(64)
-  detail      Json?
-  ip          String?
+  bizType     String    @map("biz_type")                           // 业务类型
+  bizId       String    @map("biz_id")                             // 业务ID
+  eventType   String    @map("event_type")                         // 事件类型
+  operatorId  String?   @map("operator_id") @db.VarChar(64)      // 操作人ID
+  detail      Json?                                                // 详情
+  ip          String?                                              // IP地址
   createdAt   DateTime  @default(now()) @map("created_at")
 
   @@index([bizType, bizId])

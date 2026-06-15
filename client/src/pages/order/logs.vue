@@ -38,21 +38,21 @@
               <text class="log-text">{{ log.content || '' }}</text>
 
               <!-- 图片 -->
-              <view v-if="log.images && log.images.length > 0" class="log-images">
+              <view v-if="log.imageUrls && log.imageUrls.length > 0" class="log-images">
                 <image
-                  v-for="(img, imgIdx) in log.images"
+                  v-for="(img, imgIdx) in log.imageUrls"
                   :key="imgIdx"
                   class="log-image"
                   :src="img"
                   mode="aspectFill"
-                  @click="previewImage(img, log.images)"
+                  @click="previewImage(img, log.imageUrls)"
                 />
               </view>
 
               <!-- 视频 -->
-              <view v-if="log.videos && log.videos.length > 0" class="log-videos">
+              <view v-if="log.videoUrls && log.videoUrls.length > 0" class="log-videos">
                 <view
-                  v-for="(video, vIdx) in log.videos"
+                  v-for="(video, vIdx) in log.videoUrls"
                   :key="vIdx"
                   class="video-item"
                 >
@@ -103,8 +103,9 @@ const loadStatus = ref('no-more')
 function groupByDate(logs) {
   const groups = {}
   logs.forEach(log => {
-    const date = log.createTime ? formatDate(log.createTime, 'YYYY-MM-DD') : '未知日期'
-    const time = log.createTime ? formatDate(log.createTime, 'HH:mm') : ''
+    const dateField = log.logDate || log.createTime
+    const date = dateField ? formatDate(dateField, 'YYYY-MM-DD') : '未知日期'
+    const time = dateField ? formatDate(dateField, 'HH:mm') : ''
     if (!groups[date]) {
       groups[date] = { date, logs: [] }
     }

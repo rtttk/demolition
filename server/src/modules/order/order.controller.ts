@@ -23,19 +23,6 @@ export class OrderController {
   constructor(private readonly orderService: OrderService) {}
 
   /**
-   * 创建订单（服务方）
-   */
-  @Post()
-  @Roles(2)
-  @ApiOperation({ summary: '创建订单' })
-  async create(
-    @CurrentUser('id') userId: string,
-    @Body() dto: CreateOrderDto,
-  ) {
-    return this.orderService.create(userId, dto);
-  }
-
-  /**
    * 我的订单列表
    */
   @Get('my')
@@ -65,16 +52,22 @@ export class OrderController {
   }
 
   /**
-   * 确认合作（需求方）
+   * 服务方上传合同并设置开工日期
    */
-  @Put(':id/confirm')
-  @Roles(1)
-  @ApiOperation({ summary: '确认合作' })
-  async confirm(
+  @Post(':id/contract')
+  @Roles(2)
+  @ApiOperation({ summary: '上传合同' })
+  async uploadContract(
     @Param('id') id: string,
     @CurrentUser('id') userId: string,
+    @Body() body: { contractId: string; planStartDate: string },
   ) {
-    return this.orderService.confirm(userId, id);
+    return this.orderService.uploadContract(
+      userId,
+      id,
+      body.contractId,
+      new Date(body.planStartDate),
+    );
   }
 
   /**
@@ -88,6 +81,19 @@ export class OrderController {
     @CurrentUser('id') userId: string,
   ) {
     return this.orderService.accept(userId, id);
+  }
+
+  /**
+   * 完工申请（服务方）
+   */
+  @Put(':id/complete')
+  @Roles(2)
+  @ApiOperation({ summary: '完工申请' })
+  async complete(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.orderService.complete(userId, id);
   }
 
   /**

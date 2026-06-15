@@ -16,6 +16,62 @@ export class DemandService {
   ) {}
 
   /**
+   * 将 demand 对象中的 Prisma.Decimal 字段转换为 number，并添加 statusName
+   */
+  private transformDemand(demand: any): any {
+    if (!demand) return demand;
+    const result: any = { ...demand };
+    if (result.longitude !== undefined && result.longitude !== null) {
+      result.longitude = Number(result.longitude);
+    }
+    if (result.latitude !== undefined && result.latitude !== null) {
+      result.latitude = Number(result.latitude);
+    }
+    if (result.area !== undefined && result.area !== null) {
+      result.area = Number(result.area);
+    }
+    // 添加状态名称
+    const statusMap: Record<number, string> = {
+      0: '待报价',
+      1: '报价中',
+      2: '已选标',
+      3: '已签约',
+      4: '施工中',
+      5: '待验收',
+      6: '已完成',
+      7: '已取消',
+      8: '已过期',
+    };
+    result.statusName = statusMap[result.status] || '未知';
+    return result;
+  }
+
+  private transformDemandList(list: any[]): any[] {
+    if (!Array.isArray(list)) return list;
+    return list.map((item) => this.transformDemand(item));
+  }
+
+  /**
+   * 将 quote 对象中的 Prisma.Decimal 字段转换为 number
+   */
+  private transformQuote(quote: any): any {
+    if (!quote) return quote;
+    const result: any = { ...quote };
+    if (result.price !== undefined && result.price !== null) {
+      result.price = Number(result.price);
+    }
+    if (result.team && result.team.avgRating !== undefined && result.team.avgRating !== null) {
+      result.team = { ...result.team, avgRating: Number(result.team.avgRating) };
+    }
+    return result;
+  }
+
+  private transformQuoteList(list: any[]): any[] {
+    if (!Array.isArray(list)) return list;
+    return list.map((item) => this.transformQuote(item));
+  }
+
+  /**
    * 发布需求
    */
   async create(userId: string, data: CreateDemandDto) {
@@ -65,11 +121,15 @@ export class DemandService {
       detail: { demandNo, title: data.title },
     });
 
-    return { ...demand, user };
+    return { ...this.transformDemand(demand), user };
   }
 
   /**
    * 获取需求详情
+   * 权限控制：
+   * - 需求方（需求发布者）：可以看到所有报价
+   * - 服务方（属于某个团队）：只能看到自己团队的报价
+   * - 未登录或无团队用户：看不到报价
    */
   async findById(id: string, userId?: string) {
     const demand = await this.prisma.demand.findUnique({
@@ -86,26 +146,48 @@ export class DemandService {
       data: { viewCount: { increment: 1 } },
     });
 
-    // 查询用户信息和报价列表
-    const [user, quotes] = await Promise.all([
-      this.prisma.user.findUnique({
-        where: { id: demand.userId },
-        select: { id: true, nickname: true, avatarUrl: true, phone: true },
-      }),
-      this.prisma.quote.findMany({
-        where: { demandId: id },
-        select: {
-          id: true,
-          quoteNo: true,
-          price: true,
-          duration: true,
-          planSummary: true,
-          status: true,
-          createdAt: true,
-          teamId: true,
-        },
-      }),
-    ]);
+    // 查询需求发布者信息
+    const user = await this.prisma.user.findUnique({
+      where: { id: demand.userId },
+      select: { id: true, nickname: true, avatarUrl: true, phone: true },
+    });
+
+    // 查询当前用户信息（判断角色）
+    let currentUserTeamId: string | null = null;
+    let isDemandOwner = false;
+
+    if (userId) {
+      const currentUser = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, teamId: true },
+      });
+      currentUserTeamId = currentUser?.teamId || null;
+      isDemandOwner = userId === demand.userId;
+    }
+
+    // 根据权限过滤报价，只展示审核通过的报价(status=1)
+    let quoteWhere: any = { demandId: id, status: 1 };
+    if (!isDemandOwner && currentUserTeamId) {
+      // 服务方：只能看到自己团队的报价
+      quoteWhere.teamId = currentUserTeamId;
+    } else if (!isDemandOwner && !currentUserTeamId) {
+      // 未登录或无团队用户：看不到报价
+      quoteWhere = { demandId: id, teamId: 'none', status: 1 }; // 无匹配结果
+    }
+
+    const quotes = await this.prisma.quote.findMany({
+      where: quoteWhere,
+      select: {
+        id: true,
+        quoteNo: true,
+        price: true,
+        duration: true,
+        planSummary: true,
+        status: true,
+        createdAt: true,
+        teamId: true,
+      },
+    });
 
     // 查询团队信息
     const teamIds = [...new Set(quotes.map(q => q.teamId))];
@@ -127,13 +209,13 @@ export class DemandService {
     const quotesWithTeam = quotes.map(q => {
       const team = teamMap.get(q.teamId);
       const company = team ? companyMap.get(team.companyId) : null;
-      return {
+      return this.transformQuote({
         ...q,
         team: team ? { id: team.id, name: team.name, company: company ? { id: company.id, name: company.name } : null } : null,
-      };
+      });
     });
 
-    return { ...demand, user, quotes: quotesWithTeam };
+    return { ...this.transformDemand(demand), user, quotes: quotesWithTeam };
   }
 
   /**
@@ -164,7 +246,7 @@ export class DemandService {
     const userMap = new Map(users.map(u => [u.id, u]));
 
     const listWithUsers = list.map(d => ({
-      ...d,
+      ...this.transformDemand(d),
       user: userMap.get(d.userId) || null,
     }));
 
@@ -230,7 +312,7 @@ export class DemandService {
       detail: { changes: data },
     });
 
-    return { ...updated, user };
+    return { ...this.transformDemand(updated), user };
   }
 
   /**
@@ -270,7 +352,7 @@ export class DemandService {
       operatorId: userId,
     });
 
-    return { ...updated, user };
+    return { ...this.transformDemand(updated), user };
   }
 
   /**
@@ -317,7 +399,7 @@ export class DemandService {
     const userMap = new Map(users.map(u => [u.id, u]));
 
     const listWithUsers = list.map(d => ({
-      ...d,
+      ...this.transformDemand(d),
       user: userMap.get(d.userId) || null,
     }));
 
@@ -332,7 +414,10 @@ export class DemandService {
   /**
    * 客户选择报价
    */
-  async selectQuotes(userId: string, demandId: string, quoteIds: string[]) {
+  async selectQuotes(userId: string, demandId: string, quoteIds: string | string[]) {
+    // 兼容单报价ID和数组两种格式
+    const quoteIdArray = Array.isArray(quoteIds) ? quoteIds : [quoteIds];
+
     const demand = await this.prisma.demand.findUnique({
       where: { id: demandId },
     });
@@ -348,27 +433,41 @@ export class DemandService {
     // 验证所有报价都属于此需求且已审核通过
     const quotes = await this.prisma.quote.findMany({
       where: {
-        id: { in: quoteIds },
+        id: { in: quoteIdArray },
         demandId: demandId,
         status: 1, // 审核通过
       },
     });
 
-    if (quotes.length !== quoteIds.length) {
+    if (quotes.length !== quoteIdArray.length) {
       throw new BadRequestException('部分报价不存在、不属于此需求或未通过审核');
     }
 
+    // 更新需求状态
     const updated = await this.prisma.demand.update({
       where: { id: demandId },
       data: {
-        selectedQuoteIds: quoteIds as any,
+        selectedQuoteIds: quoteIdArray as any,
         status: 5, // 已选团队
       },
     });
 
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, nickname: true, avatarUrl: true },
+    // 创建订单 - 状态0待审核
+    const orderNo = generateOrderNo('OD');
+    const selectedQuote = quotes[0];
+    const order = await this.prisma.order.create({
+      data: {
+        orderNo,
+        demandId: demandId,
+        userId: demand.userId,
+        teamId: selectedQuote.teamId,
+        companyId: selectedQuote.companyId,
+        quoteIds: quoteIdArray as any,
+        finalPrice: selectedQuote.price,
+        status: 0, // 待审核
+        contractStatus: 0, // 待上传合同
+        createdBy: userId,
+      },
     });
 
     await this.eventLog.log({
@@ -376,10 +475,10 @@ export class DemandService {
       bizId: demandId,
       eventType: 'select_quotes',
       operatorId: userId,
-      detail: { quoteIds },
+      detail: { quoteIds: quoteIdArray, orderId: order.id },
     });
 
-    return { ...updated, user };
+    return { ...this.transformDemand(updated), order };
   }
 
   /**
@@ -420,7 +519,7 @@ export class DemandService {
       },
     } as any);
 
-    return quotes;
+    return this.transformQuoteList(quotes);
   }
 
   /**

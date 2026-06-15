@@ -1,0 +1,1335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>拆除服务平台 - 业务流程图</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    :root {
+      --primary: #2563EB;
+      --primary-light: #3B82F6;
+      --success: #10B981;
+      --warning: #F59E0B;
+      --danger: #EF4444;
+      --gray: #6B7280;
+      --bg: #F8FAFC;
+      --card-bg: #FFFFFF;
+      --border: #E2E8F0;
+      --text: #1E293B;
+      --text-light: #64748B;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    
+    .deck {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    .slide {
+      background: var(--card-bg);
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      padding: 48px;
+      margin-bottom: 40px;
+      page-break-after: always;
+    }
+    
+    .slide-title {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 8px;
+      border-bottom: 3px solid var(--primary);
+      padding-bottom: 16px;
+    }
+    
+    .slide-subtitle {
+      font-size: 18px;
+      color: var(--text-light);
+      margin-bottom: 32px;
+    }
+    
+    h3 {
+      font-size: 20px;
+      color: var(--text);
+      margin: 24px 0 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    h3::before {
+      content: '';
+      width: 4px;
+      height: 20px;
+      background: var(--primary);
+      border-radius: 2px;
+    }
+    
+    /* 流程图样式 */
+    .flow-container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    
+    .flow-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .flow-node {
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      text-align: center;
+      min-width: 100px;
+      position: relative;
+      transition: transform 0.2s;
+    }
+    
+    .flow-node:hover {
+      transform: translateY(-2px);
+    }
+    
+    .node-demand {
+      background: linear-gradient(135deg, #FEF3C7, #FDE68A);
+      color: #92400E;
+      border: 1px solid #F59E0B;
+    }
+    
+    .node-quote {
+      background: linear-gradient(135deg, #DBEAFE, #BFDBFE);
+      color: #1E40AF;
+      border: 1px solid #3B82F6;
+    }
+    
+    .node-order {
+      background: linear-gradient(135deg, #D1FAE5, #A7F3D0);
+      color: #065F46;
+      border: 1px solid #10B981;
+    }
+    
+    .node-contract {
+      background: linear-gradient(135deg, #E0E7FF, #C7D2FE);
+      color: #3730A3;
+      border: 1px solid #6366F1;
+    }
+    
+    .node-action {
+      background: linear-gradient(135deg, #F3F4F6, #E5E7EB);
+      color: #374151;
+      border: 1px solid #9CA3AF;
+    }
+    
+    .node-operator {
+      background: linear-gradient(135deg, #FCE7F3, #FBCFE8);
+      color: #9D174D;
+      border: 1px solid #EC4899;
+    }
+    
+    .flow-arrow {
+      color: var(--gray);
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    
+    .arrow-down {
+      display: flex;
+      justify-content: center;
+      color: var(--gray);
+      font-size: 24px;
+      padding: 8px 0;
+    }
+    
+    /* 状态卡片 */
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin: 16px 0;
+    }
+    
+    .status-card {
+      background: var(--bg);
+      border-radius: 12px;
+      padding: 20px;
+      border-left: 4px solid var(--primary);
+    }
+    
+    .status-card.demand { border-left-color: var(--warning); }
+    .status-card.quote { border-left-color: var(--primary); }
+    .status-card.order { border-left-color: var(--success); }
+    .status-card.contract { border-left-color: #6366F1; }
+    
+    .status-label {
+      font-weight: 700;
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+    
+    .status-desc {
+      font-size: 13px;
+      color: var(--text-light);
+    }
+    
+    /* 角色卡片 */
+    .role-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin: 20px 0;
+    }
+    
+    .role-card {
+      background: linear-gradient(135deg, var(--bg), #fff);
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+      border: 2px solid var(--border);
+      transition: all 0.3s;
+    }
+    
+    .role-card:hover {
+      border-color: var(--primary);
+      box-shadow: 0 4px 16px rgba(37, 99, 235, 0.1);
+    }
+    
+    .role-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+    
+    .role-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    
+    .role-desc {
+      font-size: 14px;
+      color: var(--text-light);
+    }
+    
+    /* 表格样式 */
+    .table-container {
+      overflow-x: auto;
+      margin: 16px 0;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    
+    th, td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    th {
+      background: var(--bg);
+      font-weight: 600;
+      color: var(--text);
+    }
+    
+    td {
+      color: var(--text-light);
+    }
+    
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    
+    .badge-primary { background: #DBEAFE; color: #1E40AF; }
+    .badge-success { background: #D1FAE5; color: #065F46; }
+    .badge-warning { background: #FEF3C7; color: #92400E; }
+    .badge-danger { background: #FEE2E2; color: #991B1B; }
+    
+    /* 流程步骤 */
+    .step-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .step-item {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+    
+    .step-number {
+      width: 32px;
+      height: 32px;
+      background: var(--primary);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    
+    .step-content {
+      flex: 1;
+    }
+    
+    .step-title {
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    
+    .step-desc {
+      font-size: 13px;
+      color: var(--text-light);
+    }
+    
+    /* 分支流程 */
+    .branch-flow {
+      display: flex;
+      gap: 24px;
+      margin: 16px 0;
+    }
+    
+    .branch-column {
+      flex: 1;
+      background: var(--bg);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    
+    .branch-title {
+      font-weight: 700;
+      font-size: 16px;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--border);
+    }
+    
+    .branch-title.demander { color: var(--warning); border-color: var(--warning); }
+    .branch-title.provider { color: var(--primary); border-color: var(--primary); }
+    .branch-title.operator { color: var(--danger); border-color: var(--danger); }
+    
+    .action-list {
+      list-style: none;
+    }
+    
+    .action-list li {
+      padding: 8px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: var(--text-light);
+    }
+    
+    .action-list li::before {
+      content: '→';
+      color: var(--primary);
+      font-weight: bold;
+    }
+    
+    /* 图示说明 */
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      padding: 16px;
+      background: var(--bg);
+      border-radius: 8px;
+      margin: 16px 0;
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+    }
+    
+    .legend-color {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+    }
+    
+    /* 全局流程图 */
+    .global-flow {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 20px;
+      background: linear-gradient(135deg, #F0F9FF, #E0F2FE);
+      border-radius: 12px;
+      margin: 16px 0;
+    }
+    
+    .global-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+    
+    .global-node {
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    
+    .print-info {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-light);
+      font-size: 14px;
+    }
+    
+    @media print {
+      .slide {
+        box-shadow: none;
+        border: 1px solid #ddd;
+        margin-bottom: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="deck">
+    
+    <!-- 第1页：封面 -->
+    <div class="slide">
+      <div style="text-align: center; padding: 60px 0;">
+        <h1 style="font-size: 48px; color: var(--primary); margin-bottom: 16px;">
+          拆除服务平台
+        </h1>
+        <h2 style="font-size: 28px; color: var(--text); margin-bottom: 32px;">
+          需求与订单业务流程图
+        </h2>
+        <p style="font-size: 18px; color: var(--text-light); margin-bottom: 48px;">
+          服务方 · 运营人员操作指南
+        </p>
+        
+        <div class="legend" style="display: inline-flex; justify-content: center;">
+          <div class="legend-item">
+            <div class="legend-color" style="background: linear-gradient(135deg, #FEF3C7, #FDE68A);"></div>
+            <span>需求状态</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: linear-gradient(135deg, #DBEAFE, #BFDBFE);"></div>
+            <span>报价状态</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: linear-gradient(135deg, #D1FAE5, #A7F3D0);"></div>
+            <span>订单状态</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: linear-gradient(135deg, #E0E7FF, #C7D2FE);"></div>
+            <span>合同状态</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 第2页：三大角色 -->
+    <div class="slide">
+      <h1 class="slide-title">系统角色划分</h1>
+      <p class="slide-subtitle">拆除服务平台包含三个核心角色，各司其职</p>
+      
+      <div class="role-cards">
+        <div class="role-card">
+          <div class="role-icon">🏠</div>
+          <div class="role-title">需求方</div>
+          <div class="role-desc">发布拆除需求<br>选择服务团队<br>验收施工成果</div>
+        </div>
+        <div class="role-card">
+          <div class="role-icon">🔧</div>
+          <div class="role-title">服务方</div>
+          <div class="role-desc">承接拆除项目<br>提交报价方案<br>完成施工任务</div>
+        </div>
+        <div class="role-card">
+          <div class="role-icon">📋</div>
+          <div class="role-title">平台运营</div>
+          <div class="role-desc">审核公司资质<br>审核报价方案<br>监管订单执行</div>
+        </div>
+      </div>
+      
+      <h3>角色权限说明</h3>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>功能</th>
+              <th>需求方</th>
+              <th>服务方</th>
+              <th>运营</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>发布需求</td>
+              <td><span class="badge badge-success">✓</span></td>
+              <td><span class="badge badge-danger">✗</span></td>
+              <td><span class="badge badge-danger">✗</span></td>
+            </tr>
+            <tr>
+              <td>提交报价</td>
+              <td><span class="badge badge-danger">✗</span></td>
+              <td><span class="badge badge-success">✓</span></td>
+              <td><span class="badge badge-danger">✗</span></td>
+            </tr>
+            <tr>
+              <td>审核报价</td>
+              <td><span class="badge badge-danger">✗</span></td>
+              <td><span class="badge badge-danger">✗</span></td>
+              <td><span class="badge badge-success">✓</span></td>
+            </tr>
+            <tr>
+              <td>创建订单</td>
+              <td><span class="badge badge-danger">✗</span></td>
+              <td><span class="badge badge-success">✓</span></td>
+              <td><span class="badge badge-danger">✗</span></td>
+            </tr>
+            <tr>
+              <td>确认/验收订单</td>
+              <td><span class="badge badge-success">✓</span></td>
+              <td><span class="badge badge-primary">部分</span></td>
+              <td><span class="badge badge-danger">✗</span></td>
+            </tr>
+            <tr>
+              <td>上传施工日志</td>
+              <td><span class="badge badge-danger">✗</span></td>
+              <td><span class="badge badge-success">✓</span></td>
+              <td><span class="badge badge-primary">查看</span></td>
+            </tr>
+            <tr>
+              <td>公司/团队管理</td>
+              <td><span class="badge badge-danger">✗</span></td>
+              <td><span class="badge badge-success">✓</span></td>
+              <td><span class="badge badge-primary">审核</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 第3页：全局流程概览 -->
+    <div class="slide">
+      <h1 class="slide-title">全局业务流程概览</h1>
+      <p class="slide-subtitle">从需求发布到订单完成的完整生命周期</p>
+      
+      <div class="global-flow">
+        <div class="global-row">
+          <span style="color: var(--warning); font-weight: 700;">需求发布</span>
+          <span class="flow-arrow">→</span>
+          <span style="color: var(--warning);">待报价</span>
+          <span class="flow-arrow">→</span>
+          <span style="color: var(--warning);">报价中</span>
+          <span class="flow-arrow">→</span>
+          <span style="color: var(--warning);">已选标</span>
+          <span class="flow-arrow">→</span>
+          <span style="color: var(--success); font-weight: 700;">订单创建</span>
+        </div>
+        <div style="text-align: center; color: var(--gray);">↓</div>
+        <div class="global-row" style="justify-content: center;">
+          <span style="color: var(--success); font-weight: 700;">订单审核</span>
+          <span class="flow-arrow">→</span>
+          <span style="color: var(--success);">待签约</span>
+          <span class="flow-arrow">→</span>
+          <span style="color: var(--success);">合同审核</span>
+          <span class="flow-arrow">→</span>
+          <span style="color: var(--success);">待开工</span>
+          <span class="flow-arrow">→</span>
+          <span style="color: var(--success);">施工中</span>
+          <span class="flow-arrow">→</span>
+          <span style="color: var(--success);">待验收</span>
+          <span class="flow-arrow">→</span>
+          <span style="color: #6366F1; font-weight: 700;">完成</span>
+        </div>
+      </div>
+      
+      <h3>三方协作流程</h3>
+      <div class="branch-flow">
+        <div class="branch-column">
+          <div class="branch-title demander">需求方操作</div>
+          <ul class="action-list">
+            <li>发布需求信息</li>
+            <li>查看团队报价</li>
+            <li>选择合适报价</li>
+            <li>确认合作签约</li>
+            <li>验收施工成果</li>
+            <li>评价服务体验</li>
+          </ul>
+        </div>
+        <div class="branch-column">
+          <div class="branch-title provider">服务方操作</div>
+          <ul class="action-list">
+            <li>浏览需求大厅</li>
+            <li>查看需求详情</li>
+            <li>提交报价方案</li>
+            <li>等待报价审核</li>
+            <li>中标后创建订单</li>
+            <li>上传合同文件</li>
+            <li>开始施工</li>
+            <li>登记施工日志</li>
+            <li>申请完工验收</li>
+          </ul>
+        </div>
+        <div class="branch-column">
+          <div class="branch-title operator">运营方操作</div>
+          <ul class="action-list">
+            <li>审核公司资质</li>
+            <li>审核团队信息</li>
+            <li>审核报价方案</li>
+            <li>审核订单</li>
+            <li>审核合同文件</li>
+            <li>监控施工进度</li>
+            <li>处理异常问题</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- 第4页：需求状态流转 -->
+    <div class="slide">
+      <h1 class="slide-title">需求状态流转图</h1>
+      <p class="slide-subtitle">需求从发布到完成的完整生命周期</p>
+      
+      <div class="flow-container">
+        <!-- 状态卡片 -->
+        <div class="status-grid">
+          <div class="status-card demand">
+            <div class="status-label">0 待报价</div>
+            <div class="status-desc">需求刚发布，等待服务方报价</div>
+          </div>
+          <div class="status-card demand">
+            <div class="status-label">1 报价中</div>
+            <div class="status-desc">有服务方提交报价，等待更多报价</div>
+          </div>
+          <div class="status-card demand">
+            <div class="status-label">2 已选标</div>
+            <div class="status-desc">需求方已选择报价，等待签约</div>
+          </div>
+          <div class="status-card demand">
+            <div class="status-label">3 已签约</div>
+            <div class="status-desc">合同已签署，订单已确认</div>
+          </div>
+          <div class="status-card demand">
+            <div class="status-label">4 施工中</div>
+            <div class="status-desc">服务方正在施工</div>
+          </div>
+          <div class="status-card demand">
+            <div class="status-label">5 待验收</div>
+            <div class="status-desc">施工完成，等待需求方验收</div>
+          </div>
+          <div class="status-card demand">
+            <div class="status-label">6 已完成</div>
+            <div class="status-desc">需求方已验收，项目结束</div>
+          </div>
+          <div class="status-card demand">
+            <div class="status-label">7 已取消</div>
+            <div class="status-desc">需求被取消或过期</div>
+          </div>
+        </div>
+        
+        <!-- 流程图 -->
+        <div style="background: var(--bg); border-radius: 12px; padding: 24px; margin-top: 16px;">
+          <h3>需求状态流转</h3>
+          <div class="flow-row" style="justify-content: center; flex-wrap: wrap; gap: 8px;">
+            <div class="flow-node node-demand">发布需求<br/>(待报价)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-node node-action">服务方报价</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-node node-demand">报价中</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-node node-action">选择报价</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-node node-demand">已选标</div>
+          </div>
+          <div class="arrow-down">↓</div>
+          <div class="flow-row" style="justify-content: center; gap: 8px;">
+            <div class="flow-node node-action">取消需求</div>
+            <span class="flow-arrow">↙</span>
+            <div class="flow-node node-demand">7 已取消</div>
+          </div>
+          <div class="arrow-down">↓</div>
+          <div class="flow-row" style="justify-content: center; gap: 8px;">
+            <div class="flow-node node-quote">服务方创建订单</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-node node-order">订单状态流转</div>
+            <span class="flow-arrow">(见订单页)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 第5页：报价状态流转 -->
+    <div class="slide">
+      <h1 class="slide-title">报价状态流转图</h1>
+      <p class="slide-subtitle">服务方报价的审核与中标流程</p>
+      
+      <div class="status-grid">
+        <div class="status-card quote">
+          <div class="status-label">0 待审核</div>
+          <div class="status-desc">报价已提交，等待运营审核</div>
+        </div>
+        <div class="status-card quote">
+          <div class="status-label">1 已通过</div>
+          <div class="status-desc">运营审核通过，展示给需求方</div>
+        </div>
+        <div class="status-card quote">
+          <div class="status-label">2 未通过</div>
+          <div class="status-desc">运营审核拒绝，可修改后重新提交</div>
+        </div>
+        <div class="status-card quote">
+          <div class="status-label">3 已中标</div>
+          <div class="status-desc">需求方选择了该报价</div>
+        </div>
+        <div class="status-card quote">
+          <div class="status-label">4 未中标</div>
+          <div class="status-desc">需求方选择了其他报价</div>
+        </div>
+      </div>
+      
+      <h3>报价审核流程</h3>
+      <div style="background: var(--bg); border-radius: 12px; padding: 24px;">
+        <div class="flow-row" style="justify-content: center; flex-wrap: wrap; gap: 12px;">
+          <div class="flow-node node-quote">提交报价</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-node node-operator">运营审核</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-node node-quote" style="background: #D1FAE5;">通过</div>
+        </div>
+        <div class="arrow-down" style="margin: 16px 0;">↓</div>
+        <div class="flow-row" style="justify-content: center;">
+          <div style="display: flex; gap: 24px; flex-wrap: wrap; justify-content: center;">
+            <div class="flow-row">
+              <div class="flow-node node-quote" style="background: #FEE2E2;">未通过</div>
+              <span class="flow-arrow">→</span>
+              <div class="flow-node node-action">修改报价</div>
+              <span class="flow-arrow">→</span>
+              <div class="flow-node node-operator">重新审核</div>
+            </div>
+          </div>
+        </div>
+        <div class="arrow-down" style="margin: 16px 0;">↓</div>
+        <div class="flow-row" style="justify-content: center;">
+          <div class="flow-node node-action">需求方选择报价</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-node node-quote" style="background: #D1FAE5;">已中标</div>
+          <span class="flow-arrow">←→</span>
+          <div class="flow-node node-quote" style="background: #E5E7EB;">未中标</div>
+        </div>
+      </div>
+      
+      <h3>服务方操作说明</h3>
+      <div class="step-list">
+        <div class="step-item">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <div class="step-title">查看需求大厅</div>
+            <div class="step-desc">在接单大厅浏览可报价的需求列表</div>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <div class="step-title">查看需求详情</div>
+            <div class="step-desc">了解需求的具体信息、拆除类型、面积、预算等</div>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <div class="step-title">提交报价</div>
+            <div class="step-desc">填写报价金额、预计工期、施工方案摘要</div>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-number">4</div>
+          <div class="step-content">
+            <div class="step-title">等待审核结果</div>
+            <div class="step-desc">运营审核通过后，报价才会展示给需求方</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 第6页：订单状态流转 -->
+    <div class="slide">
+      <h1 class="slide-title">订单状态流转图</h1>
+      <p class="slide-subtitle">订单从创建到完成的核心流程</p>
+      
+      <div class="status-grid">
+        <div class="status-card order">
+          <div class="status-label">0 待审核</div>
+          <div class="status-desc">订单已创建，等待运营审核</div>
+        </div>
+        <div class="status-card order">
+          <div class="status-label">1 待签约</div>
+          <div class="status-desc">运营审核通过，等待上传合同</div>
+        </div>
+        <div class="status-card order">
+          <div class="status-label">2 待开工</div>
+          <div class="status-desc">合同已审核，等待计划开工日期</div>
+        </div>
+        <div class="status-card order">
+          <div class="status-label">3 施工中</div>
+          <div class="status-desc">项目正在施工中</div>
+        </div>
+        <div class="status-card order">
+          <div class="status-label">4 待验收</div>
+          <div class="status-desc">施工完成，等待需求方验收</div>
+        </div>
+        <div class="status-card order">
+          <div class="status-label">5 已完成</div>
+          <div class="status-desc">需求方已验收，项目成功结束</div>
+        </div>
+        <div class="status-card order">
+          <div class="status-label">6 已取消</div>
+          <div class="status-desc">订单被取消</div>
+        </div>
+      </div>
+      
+      <h3>订单完整流程</h3>
+      <div style="background: var(--bg); border-radius: 12px; padding: 24px;">
+        <div class="flow-row" style="justify-content: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
+          <div class="flow-node node-order">服务方创建订单</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-node node-operator">运营审核订单</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-node node-order">1 待签约</div>
+        </div>
+        <div class="arrow-down">↓</div>
+        <div class="flow-row" style="justify-content: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
+          <div class="flow-node node-action">上传合同文件</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-node node-contract">0 待上传</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-node node-operator">运营审核合同</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-node node-contract">2 已通过</div>
+        </div>
+        <div class="arrow-down">↓</div>
+        <div class="flow-row" style="justify-content: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
+          <div class="flow-node node-order">2 待开工</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-node node-action">计划开工日期到达</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-node node-order">3 施工中</div>
+        </div>
+        <div class="arrow-down">↓</div>
+        <div class="flow-row" style="justify-content: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
+          <div class="flow-node node-action">登记施工日志</div>
+          <span class="flow-arrow">↻</span>
+          <div class="flow-node node-action">申请完工</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-node node-order">4 待验收</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-node node-action">需求方验收</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-node node-order" style="background: #9CA3AF; color: white;">5 已完成</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 第7页：合同状态 -->
+    <div class="slide">
+      <h1 class="slide-title">合同状态流转图</h1>
+      <p class="slide-subtitle">合同文件的上传与审核流程</p>
+      
+      <div class="status-grid">
+        <div class="status-card contract">
+          <div class="status-label">0 待上传</div>
+          <div class="status-desc">订单已确认，等待服务方上传合同</div>
+        </div>
+        <div class="status-card contract">
+          <div class="status-label">1 待审核</div>
+          <div class="status-desc">合同已上传，等待运营审核</div>
+        </div>
+        <div class="status-card contract">
+          <div class="status-label">2 已通过</div>
+          <div class="status-desc">合同审核通过，可以开始施工</div>
+        </div>
+      </div>
+      
+      <h3>合同审核流程</h3>
+      <div style="background: var(--bg); border-radius: 12px; padding: 24px;">
+        <div class="flow-row" style="justify-content: center; flex-wrap: wrap; gap: 12px;">
+          <div class="flow-node node-order">订单确认</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-node node-contract">0 待上传</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-node node-action">服务方上传合同</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-node node-contract">1 待审核</div>
+        </div>
+        <div class="arrow-down" style="margin: 16px 0;">↓</div>
+        <div class="flow-row" style="justify-content: center; flex-wrap: wrap; gap: 12px;">
+          <div class="flow-node node-contract" style="background: #D1FAE5;">审核通过</div>
+          <span class="flow-arrow">或</span>
+          <div class="flow-node node-contract" style="background: #FEE2E2;">审核拒绝</div>
+        </div>
+        <div class="arrow-down" style="margin: 16px 0;">↓</div>
+        <div class="flow-row" style="justify-content: center; flex-wrap: wrap; gap: 12px;">
+          <div class="flow-node node-order" style="background: #D1FAE5;">待开工</div>
+          <span class="flow-arrow">←</span>
+          <div class="flow-node node-action">重新上传</div>
+        </div>
+      </div>
+      
+      <h3>合同上传要求</h3>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>字段</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>合同文件</td>
+              <td>支持 PDF、图片等格式</td>
+            </tr>
+            <tr>
+              <td>计划开工日期</td>
+              <td>选择的计划开始施工日期</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 第8页：服务方操作指南 -->
+    <div class="slide">
+      <h1 class="slide-title">服务方操作指南</h1>
+      <p class="slide-subtitle">服务方（拆除团队）在平台上的完整操作流程</p>
+      
+      <h3>前置条件</h3>
+      <div class="status-grid" style="grid-template-columns: repeat(2, 1fr);">
+        <div class="status-card" style="border-left-color: var(--primary);">
+          <div class="status-label">公司入驻</div>
+          <div class="status-desc">必须先完成公司资质认证（营业执照等），运营审核通过</div>
+        </div>
+        <div class="status-card" style="border-left-color: var(--success);">
+          <div class="status-label">团队创建</div>
+          <div class="status-desc">公司认证通过后，可创建施工团队，设置AB角负责人</div>
+        </div>
+      </div>
+      
+      <h3>服务方完整操作流程</h3>
+      <div class="step-list">
+        <div class="step-item">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <div class="step-title">浏览接单大厅</div>
+            <div class="step-desc">在首页查看所有待报价的需求，可按区域、拆除类型筛选</div>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <div class="step-title">查看需求详情</div>
+            <div class="step-desc">了解拆除类型、面积、地址、预算范围、期望时间等</div>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <div class="step-title">提交报价</div>
+            <div class="step-desc">填写报价金额、预计工期（天）、施工方案摘要、备注</div>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-number">4</div>
+          <div class="step-content">
+            <div class="step-title">等待报价审核</div>
+            <div class="step-desc">运营审核报价，通过后需求方可以看到你的报价</div>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-number">5</div>
+          <div class="step-content">
+            <div class="step-title">中标后创建订单</div>
+            <div class="step-desc">需求方选择你的报价后，你可以创建订单</div>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-number">6</div>
+          <div class="step-content">
+            <div class="step-title">上传合同</div>
+            <div class="step-desc">订单审核通过后，上传合同文件并填写计划开工日期</div>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-number">7</div>
+          <div class="step-content">
+            <div class="step-title">开始施工</div>
+            <div class="step-desc">合同审核通过，计划开工日期到达后，订单自动变为"施工中"</div>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-number">8</div>
+          <div class="step-content">
+            <div class="step-title">登记施工日志</div>
+            <div class="step-desc">每天登记施工进度、工作内容、上传施工照片/视频</div>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-number">9</div>
+          <div class="step-content">
+            <div class="step-title">申请完工</div>
+            <div class="step-desc">施工完成后，点击"申请完工"，等待需求方验收</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 第9页：运营操作指南 -->
+    <div class="slide">
+      <h1 class="slide-title">运营人员操作指南</h1>
+      <p class="slide-subtitle">运营人员在后台管理系统中的核心审核流程</p>
+      
+      <h3>审核任务总览</h3>
+      <div class="status-grid" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="status-card" style="border-left-color: var(--primary);">
+          <div class="status-label">公司资质审核</div>
+          <div class="status-desc">审核服务方的营业执照、资质证书、安全许可证</div>
+        </div>
+        <div class="status-card" style="border-left-color: var(--warning);">
+          <div class="status-label">报价方案审核</div>
+          <div class="status-desc">审核服务方提交的报价，查看施工方案</div>
+        </div>
+        <div class="status-card" style="border-left-color: var(--success);">
+          <div class="status-label">订单审核</div>
+          <div class="status-desc">审核服务方创建的订单，确认项目信息</div>
+        </div>
+      </div>
+      
+      <h3>公司资质审核流程</h3>
+      <div style="background: var(--bg); border-radius: 12px; padding: 20px; margin: 16px 0;">
+        <div class="flow-row" style="justify-content: center; flex-wrap: wrap; gap: 12px;">
+          <div class="flow-node node-action">服务方提交公司信息</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-node node-operator">运营审核</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-node node-action" style="background: #D1FAE5;">通过 ✓</div>
+          <span class="flow-arrow">或</span>
+          <div class="flow-node node-action" style="background: #FEE2E2;">拒绝 ✗</div>
+        </div>
+        <div style="margin-top: 12px; font-size: 13px; color: var(--text-light); text-align: center;">
+          通过后：服务方可创建团队、承接项目<br>
+          拒绝后：服务方需修改后重新提交
+        </div>
+      </div>
+      
+      <h3>报价审核流程</h3>
+      <div style="background: var(--bg); border-radius: 12px; padding: 20px; margin: 16px 0;">
+        <div class="flow-row" style="justify-content: center; flex-wrap: wrap; gap: 12px;">
+          <div class="flow-node node-quote">服务方提交报价</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-node node-operator">运营审核</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-node node-quote" style="background: #D1FAE5;">通过</div>
+          <span class="flow-arrow">或</span>
+          <div class="flow-node node-quote" style="background: #FEE2E2;">拒绝</div>
+        </div>
+        <div style="margin-top: 12px; font-size: 13px; color: var(--text-light); text-align: center;">
+          通过后：报价展示给需求方<br>
+          拒绝后：填写拒绝原因，服务方修改后可重新提交
+        </div>
+      </div>
+      
+      <h3>订单审核流程</h3>
+      <div style="background: var(--bg); border-radius: 12px; padding: 20px; margin: 16px 0;">
+        <div class="flow-row" style="justify-content: center; flex-wrap: wrap; gap: 12px;">
+          <div class="flow-node node-order">服务方创建订单</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-node node-operator">运营审核</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-node node-order">1 待签约</div>
+        </div>
+        <div style="margin-top: 12px; font-size: 13px; color: var(--text-light); text-align: center;">
+          审核通过后：服务方可以上传合同文件
+        </div>
+      </div>
+      
+      <h3>合同审核流程</h3>
+      <div style="background: var(--bg); border-radius: 12px; padding: 20px; margin: 16px 0;">
+        <div class="flow-row" style="justify-content: center; flex-wrap: wrap; gap: 12px;">
+          <div class="flow-node node-contract">1 待审核</div>
+          <span class="flow-arrow">←</span>
+          <div class="flow-node node-action">服务方上传合同</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-node node-operator">运营审核</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-node node-contract" style="background: #D1FAE5;">2 已通过</div>
+        </div>
+        <div style="margin-top: 12px; font-size: 13px; color: var(--text-light); text-align: center;">
+          通过后：订单进入"待开工"状态，等待计划开工日期到达后自动变为"施工中"
+        </div>
+      </div>
+    </div>
+
+    <!-- 第10页：关键时间节点 -->
+    <div class="slide">
+      <h1 class="slide-title">关键时间节点</h1>
+      <p class="slide-subtitle">订单生命周期中的重要时间点</p>
+      
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>时间节点</th>
+              <th>触发条件</th>
+              <th>自动/手动</th>
+              <th>后续状态</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>订单创建</strong></td>
+              <td>服务方选择报价后创建订单</td>
+              <td><span class="badge badge-primary">手动</span></td>
+              <td>订单状态: 待审核</td>
+            </tr>
+            <tr>
+              <td><strong>订单审核</strong></td>
+              <td>运营审核订单通过</td>
+              <td><span class="badge badge-danger">手动</span></td>
+              <td>订单状态: 待签约</td>
+            </tr>
+            <tr>
+              <td><strong>合同上传</strong></td>
+              <td>服务方上传合同文件</td>
+              <td><span class="badge badge-primary">手动</span></td>
+              <td>合同状态: 待审核</td>
+            </tr>
+            <tr>
+              <td><strong>合同审核</strong></td>
+              <td>运营审核合同通过</td>
+              <td><span class="badge badge-danger">手动</span></td>
+              <td>订单状态: 待开工<br>合同状态: 已通过</td>
+            </tr>
+            <tr>
+              <td><strong>自动开工</strong></td>
+              <td>计划开工日期 ≤ 当前日期</td>
+              <td><span class="badge badge-success">自动</span></td>
+              <td>订单状态: 施工中</td>
+            </tr>
+            <tr>
+              <td><strong>申请完工</strong></td>
+              <td>服务方点击"申请完工"</td>
+              <td><span class="badge badge-primary">手动</span></td>
+              <td>订单状态: 待验收</td>
+            </tr>
+            <tr>
+              <td><strong>验收确认</strong></td>
+              <td>需求方点击"验收"</td>
+              <td><span class="badge badge-danger">手动</span></td>
+              <td>订单状态: 已完成</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      
+      <h3>每日定时任务</h3>
+      <div class="status-card" style="background: linear-gradient(135deg, #FEF3C7, #FDE68A); border-left-color: var(--warning);">
+        <div class="status-label">⏰ 每日 01:00 自动任务</div>
+        <div class="status-desc">
+          系统自动检查所有"待开工"状态订单：<br>
+          如果 <strong>计划开工日期 ≤ 今天</strong>，自动将订单状态更新为"施工中"
+        </div>
+      </div>
+    </div>
+
+    <!-- 第11页：状态速查表 -->
+    <div class="slide">
+      <h1 class="slide-title">状态码速查表</h1>
+      <p class="slide-subtitle">快速查询各业务状态码含义</p>
+      
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>业务类型</th>
+              <th>状态码</th>
+              <th>状态名称</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td rowspan="8"><strong>需求</strong></td>
+              <td>0</td>
+              <td>待报价</td>
+              <td>等待服务方报价</td>
+            </tr>
+            <tr>
+              <td>1</td>
+              <td>报价中</td>
+              <td>有报价提交中</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>已选标</td>
+              <td>需求方已选择报价</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>已签约</td>
+              <td>合同已签署</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>施工中</td>
+              <td>项目正在施工</td>
+            </tr>
+            <tr>
+              <td>5</td>
+              <td>待验收</td>
+              <td>等待需求方验收</td>
+            </tr>
+            <tr>
+              <td>6</td>
+              <td>已完成</td>
+              <td>项目已完成</td>
+            </tr>
+            <tr>
+              <td>7</td>
+              <td>已取消</td>
+              <td>需求已取消</td>
+            </tr>
+            
+            <tr>
+              <td rowspan="5"><strong>报价</strong></td>
+              <td>0</td>
+              <td>待审核</td>
+              <td>等待运营审核</td>
+            </tr>
+            <tr>
+              <td>1</td>
+              <td>已通过</td>
+              <td>审核通过</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>未通过</td>
+              <td>审核拒绝</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>已中标</td>
+              <td>被需求方选中</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>未中标</td>
+              <td>未被选中</td>
+            </tr>
+            
+            <tr>
+              <td rowspan="7"><strong>订单</strong></td>
+              <td>0</td>
+              <td>待审核</td>
+              <td>等待运营审核</td>
+            </tr>
+            <tr>
+              <td>1</td>
+              <td>待签约</td>
+              <td>等待上传合同</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>待开工</td>
+              <td>等待计划开工日期</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>施工中</td>
+              <td>正在施工</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>待验收</td>
+              <td>等待需求方验收</td>
+            </tr>
+            <tr>
+              <td>5</td>
+              <td>已完成</td>
+              <td>项目完成</td>
+            </tr>
+            <tr>
+              <td>6</td>
+              <td>已取消</td>
+              <td>订单取消</td>
+            </tr>
+            
+            <tr>
+              <td rowspan="3"><strong>合同</strong></td>
+              <td>0</td>
+              <td>待上传</td>
+              <td>等待服务方上传</td>
+            </tr>
+            <tr>
+              <td>1</td>
+              <td>待审核</td>
+              <td>等待运营审核</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>已通过</td>
+              <td>审核通过</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 第12页：结束页 -->
+    <div class="slide">
+      <div style="text-align: center; padding: 80px 0;">
+        <h1 style="font-size: 36px; color: var(--primary); margin-bottom: 24px;">
+          拆除服务平台
+        </h1>
+        <h2 style="font-size: 24px; color: var(--text); margin-bottom: 32px;">
+          业务流程说明
+        </h2>
+        <p style="font-size: 18px; color: var(--text-light); margin-bottom: 16px;">
+          服务方 · 运营人员操作指南
+        </p>
+        <p style="font-size: 14px; color: var(--gray);">
+          如有疑问，请联系平台管理员
+        </p>
+      </div>
+    </div>
+
+    <div class="print-info">
+      文档可打印 | 建议使用 Chrome 浏览器打印为 PDF
+    </div>
+  </div>
+</body>
+</html>

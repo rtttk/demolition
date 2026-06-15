@@ -144,9 +144,21 @@
       }
     },
     {
+      "path": "provider/contract/upload",
+      "style": {
+        "navigationBarTitleText": "上传合同"
+      }
+    },
+    {
       "path": "provider/log/upload",
       "style": {
-        "navigationBarTitleText": "上传施工日志"
+        "navigationBarTitleText": "登记施工日志"
+      }
+    },
+    {
+      "path": "provider/log/detail",
+      "style": {
+        "navigationBarTitleText": "施工日志详情"
       }
     },
     {
@@ -208,10 +220,10 @@
         "text": "需求"
       },
       {
-        "pagePath": "pages/message/index",
-        "iconPath": "static/tabbar/msg.png",
-        "selectedIconPath": "static/tabbar/msg-active.png",
-        "text": "消息"
+        "pagePath": "pages/order/index",
+        "iconPath": "static/tabbar/order.png",
+        "selectedIconPath": "static/tabbar/order-active.png",
+        "text": "订单"
       },
       {
         "pagePath": "pages/my/index",

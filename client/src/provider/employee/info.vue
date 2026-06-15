@@ -27,7 +27,7 @@
         >
           <view class="form-picker" :class="{ 'is-placeholder': !form.gender }">
             <text>{{ genderIndex >= 0 ? genderOptions[genderIndex].label : '请选择性别' }}</text>
-            <text class="picker-arrow">></text>
+            <text class="picker-arrow" decode>{{ '>' }}</text>
           </view>
         </picker>
       </view>
@@ -80,7 +80,7 @@
         >
           <view class="form-picker" :class="{ 'is-placeholder': !form.qualificationLevel }">
             <text>{{ qualificationIndex >= 0 ? qualificationOptions[qualificationIndex].label : '请选择资质等级' }}</text>
-            <text class="picker-arrow">></text>
+            <text class="picker-arrow" decode>{{ '>' }}</text>
           </view>
         </picker>
       </view>
@@ -96,7 +96,7 @@
         >
           <view class="form-picker" :class="{ 'is-placeholder': !form.teamId }">
             <text>{{ teamIndex >= 0 ? teamOptions[teamIndex].name : '请选择所属团队' }}</text>
-            <text class="picker-arrow">></text>
+            <text class="picker-arrow" decode>{{ '>' }}</text>
           </view>
         </picker>
       </view>

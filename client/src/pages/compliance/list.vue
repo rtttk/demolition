@@ -38,7 +38,7 @@
             <text class="doc-desc ellipsis">{{ doc.summary || '' }}</text>
             <text class="doc-time">{{ doc.createTime || '' }}</text>
           </view>
-          <text class="doc-arrow">></text>
+          <text class="doc-arrow" decode>{{ '>' }}</text>
         </view>
       </view>
 

@@ -17,7 +17,7 @@
       <view class="order-card" @click="goOrder">
         <text class="order-no">{{ message.relatedOrder.orderNo || '' }}</text>
         <text class="order-title">{{ message.relatedOrder.title || '查看订单' }}</text>
-        <text class="order-arrow">></text>
+        <text class="order-arrow" decode>{{ '>' }}</text>
       </view>
     </view>
   </view>

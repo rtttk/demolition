@@ -18,6 +18,26 @@ export class QuoteService {
   ) {}
 
   /**
+   * 将 quote 对象中的 Prisma.Decimal 字段转换为 number
+   */
+  private transformQuote(quote: any): any {
+    if (!quote) return quote;
+    const result: any = { ...quote };
+    if (result.price !== undefined && result.price !== null) {
+      result.price = Number(result.price);
+    }
+    if (result.team && result.team.avgRating !== undefined && result.team.avgRating !== null) {
+      result.team = { ...result.team, avgRating: Number(result.team.avgRating) };
+    }
+    return result;
+  }
+
+  private transformQuoteList(list: any[]): any[] {
+    if (!Array.isArray(list)) return list;
+    return list.map((item) => this.transformQuote(item));
+  }
+
+  /**
    * 提交报价
    * 验证：1.需求存在且状态为待抢单 2.用户有所属团队 3.团队所属公司已认证
    */
@@ -76,7 +96,7 @@ export class QuoteService {
       throw new BadRequestException('团队关联的公司不存在');
     }
 
-    if (company.verifyStatus !== 2) {
+    if (company.verifyStatus !== 1) {
       throw new BadRequestException('所属公司尚未通过认证，无法报价');
     }
 
@@ -101,36 +121,36 @@ export class QuoteService {
         teamId: user.teamId,
         companyId: String(company.id),
         price: data.price,
-        duration: data.duration,
-        planSummary: data.planSummary ?? null,
-        remark: data.remark,
+        duration: data.duration ?? null,
+        planSummary: data.planSummary ?? '',
+        remark: data.remark ?? null,
         status: 0, // 待审核
       },
-      include: {
-        team: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        company: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        demand: {
-          select: {
-            id: true,
-            demandNo: true,
-            title: true,
-          },
-        },
-      },
-    } as any);
+    });
+
+    // 手动查询关联数据
+    const [quoteWithRelations] = await Promise.all([
+      (async () => {
+        const [teamInfo, companyInfo, demandInfo] = await Promise.all([
+          this.prisma.team.findUnique({
+            where: { id: user.teamId },
+            select: { id: true, name: true },
+          }),
+          this.prisma.company.findUnique({
+            where: { id: company.id },
+            select: { id: true, name: true },
+          }),
+          this.prisma.demand.findUnique({
+            where: { id: String(data.demandId) },
+            select: { id: true, demandNo: true, title: true },
+          }),
+        ]);
+        return { ...quote, team: teamInfo, company: companyInfo, demand: demandInfo };
+      })(),
+    ]);
 
     // 更新需求的 quote_count
-    const isFirstQuote = demand.quoteCount === 0;
+    const isFirstQuote = Number(demand.quoteCount || 0) === 0;
     await this.prisma.demand.update({
       where: { id: String(data.demandId) },
       data: {
@@ -153,7 +173,7 @@ export class QuoteService {
       },
     });
 
-    return quote;
+    return this.transformQuote(quoteWithRelations);
   }
 
   /**
@@ -186,37 +206,34 @@ export class QuoteService {
         skip: pagination.skip,
         take: pagination.take,
         orderBy: { createdAt: 'desc' },
-        include: {
-          demand: {
-            select: {
-              id: true,
-              demandNo: true,
-              title: true,
-              demoType: true,
-              address: true,
-              district: true,
-              status: true,
-            },
-          },
-          team: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          company: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
-      } as any),
+      }),
       this.prisma.quote.count({ where }),
     ]);
 
+    // 手动查询关联数据
+    const teamIds = [...new Set(list.map(q => q.teamId))];
+    const demandIds = [...new Set(list.map(q => q.demandId))];
+    const companyIds = [...new Set(list.map(q => q.companyId))];
+
+    const [teams, demands, companies] = await Promise.all([
+      this.prisma.team.findMany({ where: { id: { in: teamIds } }, select: { id: true, name: true } }),
+      this.prisma.demand.findMany({ where: { id: { in: demandIds } }, select: { id: true, demandNo: true, title: true, demoType: true, address: true, district: true, status: true } }),
+      this.prisma.company.findMany({ where: { id: { in: companyIds } }, select: { id: true, name: true } }),
+    ]);
+
+    const teamMap = new Map(teams.map(t => [t.id, t]));
+    const demandMap = new Map(demands.map(d => [d.id, d]));
+    const companyMap = new Map(companies.map(c => [c.id, c]));
+
+    const listWithRelations = list.map(q => ({
+      ...q,
+      team: teamMap.get(q.teamId) || null,
+      company: companyMap.get(q.companyId) || null,
+      demand: demandMap.get(q.demandId) || null,
+    }));
+
     return {
-      list,
+      list: this.transformQuoteList(listWithRelations),
       total,
       page: pagination.page,
       pageSize: pagination.pageSize,
@@ -229,50 +246,40 @@ export class QuoteService {
   async getQuoteById(id: string) {
     const quote = await this.prisma.quote.findUnique({
       where: { id },
-      include: {
-        demand: {
-          select: {
-            id: true,
-            demandNo: true,
-            title: true,
-            demoType: true,
-            address: true,
-            district: true,
-            status: true,
-            user: {
-              select: {
-                id: true,
-                nickname: true,
-                avatarUrl: true,
-                phone: true,
-              },
-            },
-          },
-        },
-        team: {
-          select: {
-            id: true,
-            name: true,
-            specialties: true,
-            completedCount: true,
-            avgRating: true,
-          },
-        },
-        company: {
-          select: {
-            id: true,
-            name: true,
-            verifyStatus: true,
-          },
-        },
-      },
-    } as any);
+    });
 
     if (!quote) {
       throw new NotFoundException('报价不存在');
     }
 
-    return quote;
+    // 手动查询关联数据
+    const [teamInfo, companyInfo, demandInfo] = await Promise.all([
+      this.prisma.team.findUnique({
+        where: { id: quote.teamId },
+        select: { id: true, name: true, specialties: true, completedCount: true, avgRating: true },
+      }),
+      this.prisma.company.findUnique({
+        where: { id: quote.companyId },
+        select: { id: true, name: true, verifyStatus: true },
+      }),
+      this.prisma.demand.findUnique({
+        where: { id: quote.demandId },
+        include: {
+          user: {
+            select: { id: true, nickname: true, avatarUrl: true, phone: true },
+          },
+        },
+      } as any),
+    ]);
+
+    const quoteWithRelations = {
+      ...quote,
+      team: teamInfo,
+      company: companyInfo,
+      demand: demandInfo,
+    };
+
+    return this.transformQuote(quoteWithRelations);
   }
 
   /**
@@ -336,29 +343,30 @@ export class QuoteService {
         reviewedAt: new Date(),
         reviewedBy: reviewerId || null,
       },
-      include: {
-        demand: {
-          select: {
-            id: true,
-            demandNo: true,
-            title: true,
-            status: true,
-          },
-        },
-        team: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        company: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-    } as any);
+    });
+
+    // 手动查询关联数据
+    const [demandInfo, teamInfo, companyInfo] = await Promise.all([
+      this.prisma.demand.findUnique({
+        where: { id: updated.demandId },
+        select: { id: true, demandNo: true, title: true, status: true },
+      }),
+      this.prisma.team.findUnique({
+        where: { id: updated.teamId },
+        select: { id: true, name: true },
+      }),
+      this.prisma.company.findUnique({
+        where: { id: updated.companyId },
+        select: { id: true, name: true },
+      }),
+    ]);
+
+    const updatedWithRelations = {
+      ...updated,
+      demand: demandInfo,
+      team: teamInfo,
+      company: companyInfo,
+    };
 
     await this.eventLog.log({
       bizType: 'quote',
@@ -416,7 +424,7 @@ export class QuoteService {
       });
     }
 
-    return updated;
+    return this.transformQuote(updatedWithRelations);
   }
 
   /**
@@ -451,42 +459,37 @@ export class QuoteService {
         skip: pagination.skip,
         take: pagination.take,
         orderBy: { createdAt: 'desc' },
-        include: {
-          demand: {
-            select: {
-              id: true,
-              demandNo: true,
-              title: true,
-              demoType: true,
-              status: true,
-              user: {
-                select: {
-                  id: true,
-                  nickname: true,
-                  phone: true,
-                },
-              },
-            },
-          },
-          team: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          company: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
-      } as any),
+      }),
       this.prisma.quote.count({ where }),
     ]);
 
+    // 手动查询关联数据
+    const teamIds = [...new Set(list.map(q => q.teamId))];
+    const demandIds = [...new Set(list.map(q => q.demandId))];
+    const companyIds = [...new Set(list.map(q => q.companyId))];
+
+    const [teams, demands, companies] = await Promise.all([
+      this.prisma.team.findMany({ where: { id: { in: teamIds } }, select: { id: true, name: true } }),
+      this.prisma.demand.findMany({ 
+        where: { id: { in: demandIds } }, 
+        select: { id: true, demandNo: true, title: true, demoType: true, status: true } 
+      }),
+      this.prisma.company.findMany({ where: { id: { in: companyIds } }, select: { id: true, name: true } }),
+    ]);
+
+    const teamMap = new Map(teams.map(t => [t.id, t]));
+    const demandMap = new Map(demands.map(d => [d.id, d]));
+    const companyMap = new Map(companies.map(c => [c.id, c]));
+
+    const listWithRelations = list.map(q => ({
+      ...q,
+      team: teamMap.get(q.teamId) || null,
+      company: companyMap.get(q.companyId) || null,
+      demand: demandMap.get(q.demandId) || null,
+    }));
+
     return {
-      list,
+      list: this.transformQuoteList(listWithRelations),
       total,
       page: pagination.page,
       pageSize: pagination.pageSize,

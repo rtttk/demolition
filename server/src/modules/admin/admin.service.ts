@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventLogService } from '../event-log/event-log.service';
 import { PaginationDto } from '../../common/dto/pagination.dto';
@@ -326,10 +327,6 @@ export class AdminService {
           id: true,
           companyId: true,
           name: true,
-          leaderAName: true,
-          leaderAPhone: true,
-          leaderBName: true,
-          leaderBPhone: true,
           teamSize: true,
           specialties: true,
           description: true,
@@ -337,6 +334,7 @@ export class AdminService {
           completedCount: true,
           avgRating: true,
           reviewCount: true,
+          recommended: true,
           status: true,
           createdAt: true,
           updatedAt: true,
@@ -345,8 +343,41 @@ export class AdminService {
       this.prisma.team.count({ where: { companyId } }),
     ]);
 
+    const teamIds = list.map((t) => t.id);
+    const teamMembers = new Map<string, { leaders: any[]; memberCount: number }>();
+    if (teamIds.length > 0) {
+      const members = await this.prisma.user.findMany({
+        where: { teamId: { in: teamIds } },
+        select: {
+          id: true,
+          teamId: true,
+          nickname: true,
+          phone: true,
+          isTeamAdmin: true,
+          status: true,
+        },
+      });
+      teamIds.forEach((tid) => {
+        const teamMemberList = members.filter((m) => m.teamId === tid);
+        teamMembers.set(tid, {
+          leaders: teamMemberList.filter((m) => m.isTeamAdmin),
+          memberCount: teamMemberList.length,
+        });
+      });
+    }
+
     return {
-      list: list.map((item) => this.transformTeam(item)),
+      list: list.map((item) => {
+        const transformed = this.transformTeam(item);
+        const members = teamMembers.get(item.id);
+        const leaderNames = members?.leaders?.map((l) => l.nickname || l.phone).join('、') || null;
+        return {
+          ...transformed,
+          leaderName: leaderNames,
+          leaderNames,
+          memberCount: members?.memberCount || 0,
+        };
+      }),
       total,
       page: pagination.page,
       pageSize: pagination.pageSize,
@@ -378,10 +409,6 @@ export class AdminService {
           id: true,
           companyId: true,
           name: true,
-          leaderAName: true,
-          leaderAPhone: true,
-          leaderBName: true,
-          leaderBPhone: true,
           teamSize: true,
           specialties: true,
           description: true,
@@ -389,6 +416,7 @@ export class AdminService {
           completedCount: true,
           avgRating: true,
           reviewCount: true,
+          recommended: true,
           status: true,
           createdAt: true,
           updatedAt: true,
@@ -397,23 +425,60 @@ export class AdminService {
       this.prisma.team.count({ where }),
     ]);
 
-    const companyIds = list.map((t) => t.companyId).filter(Boolean);
-    const companyMap = new Map<string, any>();
-    if (companyIds.length > 0) {
-      const companies = await this.prisma.company.findMany({
-        where: { id: { in: companyIds } },
-        select: { id: true, name: true },
-      });
-      companies.forEach((c) => companyMap.set(c.id, c));
-    }
+    const teamIds = list.map((t) => t.id);
+
+    // 并行获取企业信息、队长信息、成员数信息
+    const [companies, teamMembers] = await Promise.all([
+      (async () => {
+        const companyIds = list.map((t) => t.companyId).filter(Boolean);
+        const companyMap = new Map<string, any>();
+        if (companyIds.length > 0) {
+          const found = await this.prisma.company.findMany({
+            where: { id: { in: companyIds } },
+            select: { id: true, name: true },
+          });
+          found.forEach((c) => companyMap.set(c.id, c));
+        }
+        return companyMap;
+      })(),
+      (async () => {
+        const result = new Map<string, { leaders: any[]; memberCount: number }>();
+        if (teamIds.length > 0) {
+          const members = await this.prisma.user.findMany({
+            where: { teamId: { in: teamIds } },
+            select: {
+              id: true,
+              teamId: true,
+              nickname: true,
+              phone: true,
+              isTeamAdmin: true,
+              status: true,
+            },
+          });
+          teamIds.forEach((tid) => {
+            const teamMemberList = members.filter((m) => m.teamId === tid);
+            result.set(tid, {
+              leaders: teamMemberList.filter((m) => m.isTeamAdmin),
+              memberCount: teamMemberList.length,
+            });
+          });
+        }
+        return result;
+      })(),
+    ]);
 
     return {
       list: list.map((item) => {
         const transformed = this.transformTeam(item);
+        const members = teamMembers.get(item.id);
+        const leaderNames = members?.leaders?.map((l) => l.nickname || l.phone).join('、') || null;
         return {
           ...transformed,
-          company: companyMap.get(item.companyId) || null,
-          companyName: companyMap.get(item.companyId)?.name || null,
+          company: companies.get(item.companyId) || null,
+          companyName: companies.get(item.companyId)?.name || null,
+          leaderName: leaderNames,
+          leaderNames,
+          memberCount: members?.memberCount || 0,
         };
       }),
       total,
@@ -470,18 +535,270 @@ export class AdminService {
     };
   }
 
+  // 设置/取消团队推荐
+  async setTeamRecommended(userId: string, teamId: string, recommended: boolean) {
+    const team = await this.prisma.team.findUnique({
+      where: { id: teamId },
+    });
+    if (!team) {
+      throw new NotFoundException('团队不存在');
+    }
+
+    const updated = await this.prisma.team.update({
+      where: { id: teamId },
+      data: { recommended },
+      select: {
+        id: true,
+        companyId: true,
+        name: true,
+        teamSize: true,
+        specialties: true,
+        description: true,
+        serviceArea: true,
+        completedCount: true,
+        avgRating: true,
+        reviewCount: true,
+        recommended: true,
+        status: true,
+        updatedAt: true,
+      },
+    });
+
+    let companyInfo = null;
+    if (updated.companyId) {
+      const company = await this.prisma.company.findUnique({
+        where: { id: updated.companyId },
+        select: { id: true, name: true },
+      });
+      companyInfo = company;
+    }
+
+    await this.eventLog.log({
+      bizType: 'team',
+      bizId: teamId,
+      eventType: recommended ? 'admin_set_recommended' : 'admin_cancel_recommended',
+      operatorId: userId,
+      detail: { teamId, recommended },
+    });
+
+    const transformed = this.transformTeam(updated);
+    return {
+      ...transformed,
+      company: companyInfo,
+      companyName: companyInfo?.name || null,
+    };
+  }
+
+  // 获取所有团队简表（用于下拉选择）
+  async getAllTeamsSimple() {
+    const teams = await this.prisma.team.findMany({
+      where: { status: 1 },
+      select: { id: true, name: true, companyId: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const companyIds = teams.map((t) => t.companyId).filter(Boolean);
+    const companyMap = new Map<string, any>();
+    if (companyIds.length > 0) {
+      const companies = await this.prisma.company.findMany({
+        where: { id: { in: companyIds } },
+        select: { id: true, name: true },
+      });
+      companies.forEach((c) => companyMap.set(c.id, c));
+    }
+
+    return teams.map((t) => ({
+      id: t.id,
+      name: t.name,
+      companyId: t.companyId,
+      companyName: companyMap.get(t.companyId)?.name || null,
+    }));
+  }
+
+  // 为用户分配/取消团队
+  async assignUserTeam(operatorId: string, targetId: string, teamId: string | null) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: targetId },
+    });
+    if (!user) {
+      throw new NotFoundException('用户不存在');
+    }
+
+    let targetTeam = null;
+    if (teamId && teamId.trim() !== '') {
+      targetTeam = await this.prisma.team.findUnique({
+        where: { id: teamId },
+      });
+      if (!targetTeam) {
+        throw new NotFoundException('团队不存在');
+      }
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id: targetId },
+      data: {
+        teamId: teamId && teamId.trim() !== '' ? teamId : null,
+        isTeamAdmin: teamId && teamId.trim() !== '' ? user.isTeamAdmin : false,
+      },
+      select: {
+        id: true,
+        teamId: true,
+        isTeamAdmin: true,
+        updatedAt: true,
+      },
+    });
+
+    await this.eventLog.log({
+      bizType: 'user',
+      bizId: targetId,
+      eventType: 'admin_assign_team',
+      operatorId,
+      detail: {
+        targetId,
+        oldTeamId: user.teamId,
+        newTeamId: updated.teamId,
+      },
+    });
+
+    return updated;
+  }
+
+  // 获取团队成员列表
+  async getTeamMembers(teamId: string) {
+    const team = await this.prisma.team.findUnique({
+      where: { id: teamId },
+      select: { id: true, name: true, companyId: true },
+    });
+    if (!team) {
+      throw new NotFoundException('团队不存在');
+    }
+
+    const members = await this.prisma.user.findMany({
+      where: { teamId },
+      select: {
+        id: true,
+        nickname: true,
+        phone: true,
+        realName: true,
+        avatarUrl: true,
+        isTeamAdmin: true,
+        status: true,
+        createdAt: true,
+      },
+      orderBy: [{ isTeamAdmin: 'desc' }, { createdAt: 'asc' }],
+    });
+
+    return {
+      team: {
+        id: team.id,
+        name: team.name,
+        companyId: team.companyId,
+      },
+      members,
+      total: members.length,
+    };
+  }
+
+  // 设置/取消团队队长
+  async setTeamLeader(operatorId: string, teamId: string, userId: string, isLeader: boolean) {
+    const team = await this.prisma.team.findUnique({
+      where: { id: teamId },
+    });
+    if (!team) {
+      throw new NotFoundException('团队不存在');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+    if (!user) {
+      throw new NotFoundException('用户不存在');
+    }
+
+    if (user.teamId !== teamId) {
+      throw new BadRequestException('该用户不属于该团队');
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { isTeamAdmin: isLeader },
+      select: {
+        id: true,
+        nickname: true,
+        phone: true,
+        isTeamAdmin: true,
+        teamId: true,
+        updatedAt: true,
+      },
+    });
+
+    await this.eventLog.log({
+      bizType: 'team',
+      bizId: teamId,
+      eventType: 'admin_set_leader',
+      operatorId,
+      detail: {
+        teamId,
+        userId,
+        isLeader,
+      },
+    });
+
+    return updated;
+  }
+
+  // 移除团队成员（清空 teamId）
+  async removeTeamMember(operatorId: string, teamId: string, userId: string) {
+    const team = await this.prisma.team.findUnique({
+      where: { id: teamId },
+    });
+    if (!team) {
+      throw new NotFoundException('团队不存在');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+    if (!user) {
+      throw new NotFoundException('用户不存在');
+    }
+
+    if (user.teamId !== teamId) {
+      throw new BadRequestException('该用户不属于该团队');
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { teamId: null, isTeamAdmin: false },
+    });
+
+    await this.eventLog.log({
+      bizType: 'team',
+      bizId: teamId,
+      eventType: 'admin_remove_member',
+      operatorId,
+      detail: {
+        teamId,
+        userId,
+        userName: user.nickname || user.phone,
+      },
+    });
+
+    return { success: true };
+  }
+
   // ==================== 需求管理 ====================
 
   async getDemandList(pagination: PaginationDto, filters?: any) {
     const where: any = {};
 
-    if (filters?.status !== undefined) {
+    if (filters?.status !== undefined && filters.status !== '') {
       where.status = Number(filters.status);
     }
-    if (filters?.district) {
+    if (filters?.district && filters.district.trim() !== '') {
       where.district = { contains: filters.district };
     }
-    if (filters?.demoType !== undefined) {
+    if (filters?.demoType !== undefined && filters.demoType !== '') {
       where.demoType = Number(filters.demoType);
     }
 
@@ -503,7 +820,10 @@ export class AdminService {
           longitude: true,
           latitude: true,
           area: true,
-          floor: true,
+          communityName: true,
+          contactName: true,
+          contactPhone: true,
+          budget: true,
           expectedTime: true,
           imageIds: true,
           status: true,
@@ -587,13 +907,13 @@ export class AdminService {
   async getQuoteList(pagination: PaginationDto, filters?: any) {
     const where: any = {};
 
-    if (filters?.status !== undefined) {
+    if (filters?.status !== undefined && filters.status !== '') {
       where.status = Number(filters.status);
     }
-    if (filters?.demandId !== undefined) {
+    if (filters?.demandId && filters.demandId.trim() !== '') {
       where.demandId = String(filters.demandId);
     }
-    if (filters?.teamId !== undefined) {
+    if (filters?.teamId && filters.teamId.trim() !== '') {
       where.teamId = String(filters.teamId);
     }
 
@@ -755,13 +1075,13 @@ export class AdminService {
   async getOrderList(pagination: PaginationDto, filters?: any) {
     const where: any = {};
 
-    if (filters?.status !== undefined) {
+    if (filters?.status !== undefined && filters.status !== '') {
       where.status = Number(filters.status);
     }
-    if (filters?.teamId !== undefined) {
+    if (filters?.teamId && filters.teamId.trim() !== '') {
       where.teamId = String(filters.teamId);
     }
-    if (filters?.companyId !== undefined) {
+    if (filters?.companyId && filters.companyId.trim() !== '') {
       where.companyId = String(filters.companyId);
     }
 
@@ -786,6 +1106,10 @@ export class AdminService {
           completedAt: true,
           acceptedAt: true,
           createdBy: true,
+          contractId: true,
+          contractStatus: true,
+          signedAt: true,
+          planStartDate: true,
           createdAt: true,
           updatedAt: true,
         },
@@ -797,8 +1121,9 @@ export class AdminService {
     const userIds = list.map((o) => o.userId).filter(Boolean);
     const teamIds = list.map((o) => o.teamId).filter(Boolean);
     const companyIds = list.map((o) => o.companyId).filter(Boolean);
+    const contractIds = list.map((o) => o.contractId).filter(Boolean);
 
-    const [demands, users, teams, companies] = await Promise.all([
+    const [demands, users, teams, companies, contractFiles] = await Promise.all([
       demandIds.length > 0
         ? this.prisma.demand.findMany({
             where: { id: { in: demandIds } },
@@ -823,6 +1148,12 @@ export class AdminService {
             select: { id: true, name: true },
           })
         : [],
+      contractIds.length > 0
+        ? this.prisma.file.findMany({
+            where: { id: { in: contractIds } },
+            select: { id: true, fileUrl: true, fileName: true },
+          })
+        : [],
     ]);
 
     const demandMap = new Map<string, any>();
@@ -833,6 +1164,8 @@ export class AdminService {
     teams.forEach((t) => teamMap.set(t.id, t));
     const companyMap = new Map<string, any>();
     companies.forEach((c) => companyMap.set(c.id, c));
+    const contractMap = new Map<string, any>();
+    contractFiles.forEach((f) => contractMap.set(f.id, f));
 
     return {
       list: list.map((item) =>
@@ -842,6 +1175,7 @@ export class AdminService {
           user: userMap.get(item.userId) || null,
           team: teamMap.get(item.teamId) || null,
           company: companyMap.get(item.companyId) || null,
+          contractFile: contractMap.get(item.contractId) || null,
         }),
       ),
       total,
@@ -850,15 +1184,100 @@ export class AdminService {
     };
   }
 
+  /**
+   * Admin审核订单通过 (0待审核 → 1待签约)
+   */
+  async adminApproveOrder(orderId: string, userId: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      throw new NotFoundException('订单不存在');
+    }
+
+    if (order.status !== 0) {
+      throw new BadRequestException('当前订单状态不允许审核');
+    }
+
+    const updated = await this.prisma.order.update({
+      where: { id: orderId },
+      data: {
+        status: 1, // 待签约
+        confirmedAt: new Date(),
+      },
+    });
+
+    await this.eventLog.log({
+      bizType: 'order',
+      bizId: orderId,
+      eventType: 'admin_approve',
+      operatorId: userId,
+    });
+
+    return { ...this.transformOrder(updated) };
+  }
+
+  /**
+   * Admin审核合同通过 (2待开工 → 3施工中 或 保持2待开工)
+   * 注意：合同审核通过后，如果开工日期已到则立即进入施工中状态
+   */
+  async approveContract(orderId: string, userId: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      throw new NotFoundException('订单不存在');
+    }
+
+    if (order.status !== 2 || order.contractStatus !== 1) {
+      throw new BadRequestException('当前订单状态不允许审核合同');
+    }
+
+    // 检查是否当天即可开工（开工日期 <= 今天），使用日期字符串比较避免时区问题
+    const todayStr = new Date().toISOString().split('T')[0];
+    const planDateStr = order.planStartDate ? new Date(order.planStartDate).toISOString().split('T')[0] : null;
+    const isTodayOrBefore = planDateStr && planDateStr <= todayStr;
+
+    const [updated, contractFile] = await Promise.all([
+      this.prisma.order.update({
+        where: { id: orderId },
+        data: {
+          contractStatus: 2, // 已通过
+          signedAt: new Date(),
+          status: isTodayOrBefore ? 3 : 2, // 当天或之前可开工则进入施工中
+          startedAt: isTodayOrBefore ? new Date() : null,
+        },
+      }),
+      order.contractId
+        ? this.prisma.file.findUnique({
+            where: { id: order.contractId },
+            select: { id: true, fileUrl: true, fileName: true },
+          })
+        : null,
+    ]);
+
+    await this.eventLog.log({
+      bizType: 'order',
+      bizId: orderId,
+      eventType: 'approve_contract',
+      operatorId: userId,
+      detail: { status: updated.status, isTodayOrBefore },
+    });
+
+    return { ...this.transformOrder(updated), contractFile };
+  }
+
   // ==================== 施工日志监控 ====================
 
   async getLogList(pagination: PaginationDto, filters?: any) {
     const where: any = {};
 
-    if (filters?.orderId !== undefined) {
+    if (filters?.orderId && filters.orderId.trim() !== '') {
       where.orderId = String(filters.orderId);
     }
-    if (filters?.teamId !== undefined) {
+    if (filters?.teamId && filters.teamId.trim() !== '') {
       where.teamId = String(filters.teamId);
     }
 
@@ -932,7 +1351,7 @@ export class AdminService {
     if (filters?.status !== undefined) {
       where.status = Number(filters.status);
     }
-    if (filters?.teamId !== undefined) {
+    if (filters?.teamId !== undefined && filters.teamId !== '') {
       where.teamId = String(filters.teamId);
     }
     if (filters?.demoType !== undefined) {
@@ -958,6 +1377,7 @@ export class AdminService {
           beforeImageIds: true,
           afterImageIds: true,
           status: true,
+          recommended: true,
           viewCount: true,
           createdAt: true,
           updatedAt: true,
@@ -989,14 +1409,40 @@ export class AdminService {
     const companyMapForCase = new Map<string, any>();
     companies.forEach((c) => companyMapForCase.set(c.id, c));
 
+    // 获取所有图片ID并查询对应的URL
+    const allFileIds = new Set<string>();
+    list.forEach((c) => {
+      const beforeIds = (c.beforeImageIds as any[]) || [];
+      const afterIds = (c.afterImageIds as any[]) || [];
+      beforeIds.forEach((id) => allFileIds.add(String(id)));
+      afterIds.forEach((id) => allFileIds.add(String(id)));
+    });
+
+    let fileUrlMap = new Map<string, string>();
+    if (allFileIds.size > 0) {
+      const files = await this.prisma.file.findMany({
+        where: { id: { in: Array.from(allFileIds) } },
+        select: { id: true, fileUrl: true },
+      });
+      files.forEach((f) => fileUrlMap.set(f.id, f.fileUrl));
+    }
+
     return {
-      list: list.map((item) =>
-        this.transformCase({
+      list: list.map((item) => {
+        // 添加图片URLs
+        const beforeIds = (item.beforeImageIds as any[]) || [];
+        const afterIds = (item.afterImageIds as any[]) || [];
+        const beforeImageUrls = beforeIds.map((id) => fileUrlMap.get(String(id))).filter(Boolean);
+        const afterImageUrls = afterIds.map((id) => fileUrlMap.get(String(id))).filter(Boolean);
+
+        return this.transformCase({
           ...item,
+          beforeImageUrls,
+          afterImageUrls,
           team: teamMap.get(item.teamId) || null,
           company: companyMapForCase.get(item.companyId) || null,
-        }),
-      ),
+        });
+      }),
       total,
       page: pagination.page,
       pageSize: pagination.pageSize,
@@ -1006,7 +1452,7 @@ export class AdminService {
   async updateCaseStatus(
     userId: string,
     caseId: string,
-    action: 'passed' | 'rejected',
+    action: 'visible' | 'hidden' | 'passed' | 'rejected',
   ) {
     const caseItem = await this.prisma.case.findUnique({
       where: { id: caseId },
@@ -1015,7 +1461,19 @@ export class AdminService {
       throw new NotFoundException('案例不存在');
     }
 
-    const status = action === 'passed' ? 1 : 2;
+    // visible=1 显示, hidden=0 隐藏(软删除)
+    let status: number;
+    if (action === 'visible') {
+      status = 1;
+    } else if (action === 'hidden') {
+      status = 0;
+    } else if (action === 'passed') {
+      status = 1;
+    } else if (action === 'rejected') {
+      status = 0;
+    } else {
+      throw new BadRequestException('无效的操作');
+    }
 
     const updated = await this.prisma.case.update({
       where: { id: caseId },
@@ -1030,7 +1488,10 @@ export class AdminService {
         address: true,
         area: true,
         duration: true,
+        beforeImageIds: true,
+        afterImageIds: true,
         status: true,
+        recommended: true,
         viewCount: true,
         createdAt: true,
         updatedAt: true,
@@ -1055,14 +1516,213 @@ export class AdminService {
     await this.eventLog.log({
       bizType: 'case',
       bizId: caseId,
-      eventType: 'admin_review',
+      eventType: 'admin_status_change',
       operatorId: userId,
-      detail: { action },
+      detail: { action, newStatus: status },
     });
+
+    // 获取图片URLs
+    const beforeIds = (updated.beforeImageIds as any[]) || [];
+    const afterIds = (updated.afterImageIds as any[]) || [];
+    const allFileIds = [...beforeIds, ...afterIds].map((id) => String(id));
+    let fileUrlMap = new Map<string, string>();
+    if (allFileIds.length > 0) {
+      const files = await this.prisma.file.findMany({
+        where: { id: { in: allFileIds } },
+        select: { id: true, fileUrl: true },
+      });
+      files.forEach((f) => fileUrlMap.set(f.id, f.fileUrl));
+    }
+    const beforeImageUrls = beforeIds.map((id) => fileUrlMap.get(String(id))).filter(Boolean);
+    const afterImageUrls = afterIds.map((id) => fileUrlMap.get(String(id))).filter(Boolean);
 
     return this.transformCase({
       ...updated,
+      beforeImageUrls,
+      afterImageUrls,
       team,
+      company,
+    });
+  }
+
+  /**
+   * 创建案例（管理员）
+   */
+  async createCase(userId: string, data: {
+    teamId: string;
+    title: string;
+    demoType: number;
+    description?: string;
+    address?: string;
+    area?: string;
+    duration?: number;
+    beforeImageIds?: string[];
+    afterImageIds?: string[];
+    recommended?: boolean;
+  }) {
+    // 验证团队存在并获取公司ID
+    const team = await this.prisma.team.findUnique({
+      where: { id: data.teamId },
+      select: { id: true, companyId: true, name: true },
+    });
+
+    if (!team) {
+      throw new NotFoundException('团队不存在');
+    }
+
+    const c = await this.prisma.case.create({
+      data: {
+        teamId: data.teamId,
+        companyId: team.companyId,
+        title: data.title,
+        demoType: data.demoType,
+        description: data.description || null,
+        address: data.address || null,
+        area: data.area ? new Prisma.Decimal(data.area) : null,
+        duration: data.duration,
+        beforeImageIds: data.beforeImageIds?.length ? data.beforeImageIds as any : Prisma.JsonNull,
+        afterImageIds: data.afterImageIds?.length ? data.afterImageIds as any : Prisma.JsonNull,
+        status: 0, // 待审核
+        recommended: data.recommended || false,
+      },
+    });
+
+    await this.eventLog.log({
+      bizType: 'case',
+      bizId: c.id,
+      eventType: 'admin_create',
+      operatorId: userId,
+      detail: { title: data.title, teamId: data.teamId },
+    });
+
+    // 获取关联数据后返回
+    const [teamResult, company] = await Promise.all([
+      this.prisma.team.findUnique({
+        where: { id: c.teamId },
+        select: { id: true, name: true },
+      }),
+      this.prisma.company.findUnique({
+        where: { id: c.companyId },
+        select: { id: true, name: true },
+      }),
+    ]);
+
+    // 获取图片URLs
+    const beforeIds = (c.beforeImageIds as any[]) || [];
+    const afterIds = (c.afterImageIds as any[]) || [];
+    const allFileIds = [...beforeIds, ...afterIds].map((id) => String(id));
+    let fileUrlMap = new Map<string, string>();
+    if (allFileIds.length > 0) {
+      const files = await this.prisma.file.findMany({
+        where: { id: { in: allFileIds } },
+        select: { id: true, fileUrl: true },
+      });
+      files.forEach((f) => fileUrlMap.set(f.id, f.fileUrl));
+    }
+    const beforeImageUrls = beforeIds.map((id) => fileUrlMap.get(String(id))).filter(Boolean);
+    const afterImageUrls = afterIds.map((id) => fileUrlMap.get(String(id))).filter(Boolean);
+
+    return this.transformCase({
+      ...c,
+      beforeImageUrls,
+      afterImageUrls,
+      team: teamResult,
+      company,
+    });
+  }
+
+  /**
+   * 更新案例（管理员）
+   */
+  async updateCase(
+    userId: string,
+    caseId: string,
+    data: {
+      title?: string;
+      demoType?: number;
+      description?: string;
+      address?: string;
+      area?: string;
+      duration?: number;
+      beforeImageIds?: string[];
+      afterImageIds?: string[];
+      status?: number;
+      recommended?: boolean;
+    },
+  ) {
+    const caseItem = await this.prisma.case.findUnique({
+      where: { id: caseId },
+    });
+
+    if (!caseItem) {
+      throw new NotFoundException('案例不存在');
+    }
+
+    const updateData: any = {};
+    if (data.title !== undefined) updateData.title = data.title;
+    if (data.demoType !== undefined) updateData.demoType = data.demoType;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.address !== undefined) updateData.address = data.address;
+    if (data.area !== undefined) updateData.area = data.area ? new Prisma.Decimal(data.area) : null;
+    if (data.duration !== undefined) updateData.duration = data.duration;
+    if (data.beforeImageIds !== undefined) {
+      updateData.beforeImageIds = data.beforeImageIds?.length ? data.beforeImageIds as any : Prisma.JsonNull;
+    }
+    if (data.afterImageIds !== undefined) {
+      updateData.afterImageIds = data.afterImageIds?.length ? data.afterImageIds as any : Prisma.JsonNull;
+    }
+    if (data.status !== undefined) updateData.status = data.status;
+    if (data.recommended !== undefined) updateData.recommended = data.recommended;
+
+    const updated = await this.prisma.case.update({
+      where: { id: caseId },
+      data: updateData,
+    });
+
+    await this.eventLog.log({
+      bizType: 'case',
+      bizId: caseId,
+      eventType: 'admin_update',
+      operatorId: userId,
+      detail: { fields: Object.keys(data) },
+    });
+
+    // 获取关联数据后返回
+    const [teamResult, company] = await Promise.all([
+      updated.teamId
+        ? this.prisma.team.findUnique({
+            where: { id: updated.teamId },
+            select: { id: true, name: true },
+          })
+        : null,
+      updated.companyId
+        ? this.prisma.company.findUnique({
+            where: { id: updated.companyId },
+            select: { id: true, name: true },
+          })
+        : null,
+    ]);
+
+    // 获取图片URLs
+    const beforeIds = (updated.beforeImageIds as any[]) || [];
+    const afterIds = (updated.afterImageIds as any[]) || [];
+    const allFileIds = [...beforeIds, ...afterIds].map((id) => String(id));
+    let fileUrlMap = new Map<string, string>();
+    if (allFileIds.length > 0) {
+      const files = await this.prisma.file.findMany({
+        where: { id: { in: allFileIds } },
+        select: { id: true, fileUrl: true },
+      });
+      files.forEach((f) => fileUrlMap.set(f.id, f.fileUrl));
+    }
+    const beforeImageUrls = beforeIds.map((id) => fileUrlMap.get(String(id))).filter(Boolean);
+    const afterImageUrls = afterIds.map((id) => fileUrlMap.get(String(id))).filter(Boolean);
+
+    return this.transformCase({
+      ...updated,
+      beforeImageUrls,
+      afterImageUrls,
+      team: teamResult,
       company,
     });
   }
@@ -1309,6 +1969,7 @@ export class AdminService {
       completedCount: team.completedCount,
       avgRating: team.avgRating ? Number(team.avgRating) : 0,
       reviewCount: team.reviewCount,
+      recommended: team.recommended || false,
       status: team.status,
       createdAt: team.createdAt,
       updatedAt: team.updatedAt,
@@ -1444,6 +2105,10 @@ export class AdminService {
       completedAt: order.completedAt,
       acceptedAt: order.acceptedAt,
       createdBy: order.createdBy,
+      contractId: order.contractId,
+      contractStatus: order.contractStatus,
+      signedAt: order.signedAt,
+      planStartDate: order.planStartDate,
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
     };
@@ -1541,7 +2206,10 @@ export class AdminService {
       duration: caseItem.duration,
       beforeImageIds: caseItem.beforeImageIds,
       afterImageIds: caseItem.afterImageIds,
+      beforeImageUrls: caseItem.beforeImageUrls || [],
+      afterImageUrls: caseItem.afterImageUrls || [],
       status: caseItem.status,
+      recommended: caseItem.recommended || false,
       viewCount: caseItem.viewCount,
       createdAt: caseItem.createdAt,
       updatedAt: caseItem.updatedAt,

@@ -13,7 +13,7 @@
           <text :class="['value-text', { placeholder: !form.demoTypeName }]">
             {{ form.demoTypeName || '请选择拆除类型' }}
           </text>
-          <text class="arrow">></text>
+          <text class="arrow" decode>{{ '>' }}</text>
         </view>
       </view>
 
