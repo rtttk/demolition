@@ -12,7 +12,7 @@ export default defineConfig({
   server: {
     port: 8081,
     proxy: {
-      '/api': {
+      '/demolition/api': {
         target: 'http://localhost:3000',
         changeOrigin: true
       }

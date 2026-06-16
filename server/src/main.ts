@@ -40,7 +40,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // 全局前缀
-  app.setGlobalPrefix('api/v1');
+  app.setGlobalPrefix('demolition/api/v1');
 
   // 全局响应拦截器 - 统一返回 { code, message, data } 格式
   app.useGlobalInterceptors(
