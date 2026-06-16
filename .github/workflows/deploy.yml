@@ -38,12 +38,12 @@ jobs:
       - name: Package for deployment
         run: |
           tar -czf dist.tar.gz \
-            -C server dist \
-            -C server package.json \
-            -C server package-lock.json \
-            -C server prisma/schema.prisma \
-            -C server prisma/migrations
-        working-directory: .
+            -C server \
+            dist \
+            package.json \
+            package-lock.json \
+            prisma/schema.prisma \
+            prisma/migrations
 
       - name: Install SSH tools
         run: |
